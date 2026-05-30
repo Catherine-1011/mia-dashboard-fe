@@ -6,37 +6,44 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Build & Deploy
+  build-and-deploy:
+    name: Build on CI & Deploy
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Droplet via SSH
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Copy build output to Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          source: ".next/,public/,package.json,package-lock.json,next.config.ts"
+          target: "/root/mia-dashboard-fe"
+
+      - name: Install prod deps & restart PM2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          command_timeout: 30m
           script: |
             set -e
-
-            echo "--- Navigating to app directory ---"
             cd /root/mia-dashboard-fe
-
-            echo "--- Pulling latest code ---"
-            git pull origin main
-
-            echo "--- Installing dependencies ---"
-            npm ci
-
-            echo "--- Building Next.js app ---"
-            npm run build
-
-            echo "--- Restarting app with PM2 ---"
+            npm ci --omit=dev
             pm2 restart mia-dashboard-fe || pm2 start npm --name "mia-dashboard-fe" -- start
-
             echo "--- Deployment complete ---"

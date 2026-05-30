@@ -1,0 +1,41 @@
+name: Deploy to DigitalOcean Droplet
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Droplet via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "--- Navigating to app directory ---"
+            cd /root/mia-dashboard-fe
+
+            echo "--- Pulling latest code ---"
+            git pull origin main
+
+            echo "--- Installing dependencies ---"
+            npm ci
+
+            echo "--- Building Next.js app ---"
+            npm run build
+
+            echo "--- Restarting app with PM2 ---"
+            pm2 restart mia-dashboard-fe || pm2 start npm --name "mia-dashboard-fe" -- start
+
+            echo "--- Deployment complete ---"

@@ -16,7 +16,7 @@ interface ErrorPageProps {
 	errorCode?: string;
 	actions?: ReactNode;
 }
-
+// new
 export default function ErrorPage({
 	title = "Dashboard Error",
 	description = "Something went wrong while loading the dashboard. Please try again or contact support if the problem persists.",

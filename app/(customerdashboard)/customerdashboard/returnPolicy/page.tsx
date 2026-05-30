@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://alpa-be.onrender.com";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://134.199.161.119:5000";
 
 function getAuthHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;

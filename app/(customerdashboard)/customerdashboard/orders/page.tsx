@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { isTerminalStatus, getStatusBadgeVariant } from "@/lib/orderStatusRules";
 import { ImagePlus, Trash2 } from "lucide-react";
 
-const BASE_URL = "https://alpa-be.onrender.com";
+const BASE_URL = "http://134.199.161.119:5000";
 
 function getAuthHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;

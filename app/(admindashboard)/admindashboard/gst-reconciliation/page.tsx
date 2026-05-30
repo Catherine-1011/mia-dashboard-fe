@@ -230,7 +230,7 @@ const ReportPage = () => {
       if (!token) throw new Error("No authentication token found");
 
       const params = new URLSearchParams({ month: String(month), year: String(year) });
-      const url = `${process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com"}/api/admin/sales/gst-report?${params}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000"}/api/admin/sales/gst-report?${params}`;
 
       const res = await fetch(url, {
         method: "GET",

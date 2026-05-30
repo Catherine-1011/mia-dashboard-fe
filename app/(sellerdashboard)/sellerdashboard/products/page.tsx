@@ -23,7 +23,7 @@ import { ProductAuditHistory } from "@/components/shared/product-audit-history";
 import { ImageCropModal } from "@/components/shared/image-crop-modal";
 
 // --- CONFIGURATION ---
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
 
 // --- HELPER: Get Auth Token ---
 const getAuthToken = () => {

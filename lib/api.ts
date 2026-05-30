@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
 
 // Get auth token from localStorage (check both keys for compatibility)
 const getAuthToken = () => {

@@ -15,7 +15,7 @@
 //       setLoading(true);
 //       try {
 //         const token = typeof window !== "undefined" ? (localStorage.getItem("alpa_token") || localStorage.getItem("auth_token")) : null;
-//         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com"}/api/users/all`;
+//         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000"}/api/users/all`;
         
 //         console.log("📍 UserListCard fetching from:", apiUrl);
 //         console.log("🔍 Token exists:", !!token);

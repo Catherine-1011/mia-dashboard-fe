@@ -38,7 +38,7 @@ const formSchema = z.object({
 });
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
 
 // Login API function
 async function loginUser(email: string, password: string) {
@@ -495,7 +495,7 @@ function LoginForm() {
               <div className="flex-1 border-t border-border" />
             </div>
             {/* <a
-              href={`https://alpa-be.onrender.com/api/auth/saml/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
+              href={`http://134.199.161.119:5000/api/auth/saml/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
               className="w-full"
             > */}
             <a

@@ -78,7 +78,7 @@ const AnalyticsPage = () => {
 			}
 
 			// Build URL with optional date parameters
-			let url = `${process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com"}/api/admin/sales/analytics`;
+			let url = `${process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000"}/api/admin/sales/analytics`;
 			const params = new URLSearchParams();
 			
 			if (startDate) params.append('startDate', startDate);
@@ -151,7 +151,7 @@ const AnalyticsPage = () => {
 				endpoint += `?${params.toString()}`;
 			}
 			
-			console.log("📊 Fetching chart data:", `${process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com"}${endpoint}`);
+			console.log("📊 Fetching chart data:", `${process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000"}${endpoint}`);
 
 			const json = await api.get(endpoint);
 

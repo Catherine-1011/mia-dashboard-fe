@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryAuditHistory } from "@/components/shared/category-audit-history";
 import { cn } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type CategoryStatus = "APPROVED" | "PENDING" | "REJECTED" | "DELETED";

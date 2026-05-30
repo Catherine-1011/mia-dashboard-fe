@@ -144,3 +144,4 @@ export default function ErrorsPage() {
 		</div>
 	);
 }
+// added the ip backend url

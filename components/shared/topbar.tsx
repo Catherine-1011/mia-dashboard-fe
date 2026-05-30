@@ -228,7 +228,7 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 				// 3. Fire-and-forget backend token invalidation — no await so it
 				//    never blocks the redirect regardless of server response time.
 				fetch(
-					`${process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com"}/api/auth/logout`,
+					`${process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000"}/api/auth/logout`,
 					{
 						method: "POST",
 						credentials: "include",

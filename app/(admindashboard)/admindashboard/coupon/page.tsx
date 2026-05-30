@@ -18,7 +18,7 @@
 // import { cn } from "@/lib/utils";
 // import { AuditLogDiffModal, type AuditLogEntry } from "@/components/shared/audit-log-diff-modal";
 
-// const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alpa-be.onrender.com";
+// const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
 
 // interface Coupon {
 //   id: string;

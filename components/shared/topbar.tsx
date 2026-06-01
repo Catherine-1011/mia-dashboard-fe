@@ -241,8 +241,8 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 
 				// 4. Redirect to Webapp's logout-callback so it also clears its session.
 				window.location.replace(
-					"https://apla-fe.vercel.app/logout-callback?redirect=" +
-					encodeURIComponent("https://apla-fe.vercel.app")
+					"http://madeinarnhemland.com.au/logout-callback?redirect=" +
+					encodeURIComponent("http://madeinarnhemland.com.au")
 				);
 			}
 		};

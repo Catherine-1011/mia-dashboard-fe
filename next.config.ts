@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const WEBAPP_ORIGIN = "https://apla-fe.vercel.app";
+const WEBAPP_ORIGIN = "http://madeinarnhemland.com.au";
 
 const nextConfig: NextConfig = {
 	images: {

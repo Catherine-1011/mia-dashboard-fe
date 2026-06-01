@@ -74,7 +74,7 @@ function WishlistCard({ item, onRemove, onAddToCart, onMoveToCart, actionLoading
   const isMovingToCart = actionLoading[`cart-${product.id}`];
   
   const productSlug = createProductSlug(product.title);
-  const frontendUrl = `https://apla-fe.vercel.app/shop/${productSlug}`;
+  const frontendUrl = `http://madeinarnhemland.com.au/shop/${productSlug}`;
   
   return (
     <Card className="overflow-hidden">
@@ -193,7 +193,7 @@ function WishlistTable({ items, onRemove, onAddToCart, onMoveToCart, actionLoadi
           const isMovingToCart = actionLoading[`cart-${product.id}`];
           
           const productSlug = createProductSlug(product.title);
-          const frontendUrl = `https://apla-fe.vercel.app/shop/${productSlug}`;
+          const frontendUrl = `http://madeinarnhemland.com.au/shop/${productSlug}`;
           
           return (
             <TableRow key={item.id}>

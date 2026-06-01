@@ -75,8 +75,8 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
 
       if (typeof window !== "undefined") {
         window.location.replace(
-          "https://apla-fe.vercel.app/logout-callback?redirect=" +
-          encodeURIComponent("https://apla-fe.vercel.app")
+          "http://madeinarnhemland.com.au/logout-callback?redirect=" +
+          encodeURIComponent("http://madeinarnhemland.com.au")
         );
       }
       throw new Error("Session expired. Please login again.");

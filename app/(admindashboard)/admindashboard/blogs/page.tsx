@@ -637,7 +637,7 @@ const BlogManagementPage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(`https://apla-fe.vercel.app/blog/${blog.slug}`, '_blank')}
+                            onClick={() => window.open(`http://madeinarnhemland.com.au/blog/${blog.slug}`, '_blank')}
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             Preview

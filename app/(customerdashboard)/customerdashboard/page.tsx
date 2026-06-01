@@ -230,7 +230,7 @@ export default function CustomerDashboardPage() {
                 <Package className="h-10 w-10 opacity-40" />
                 <p className="text-sm">No orders yet</p>
                 <Button size="sm" variant="outline" asChild>
-                  <Link href="https://apla-fe.vercel.app/shop">
+                  <Link href="http://madeinarnhemland.com.au/shop">
                     Start Shopping
                   </Link>
                 </Button>

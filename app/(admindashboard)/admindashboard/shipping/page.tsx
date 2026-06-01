@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
 
 const getAuthToken = () => {
   if (typeof window === "undefined") {

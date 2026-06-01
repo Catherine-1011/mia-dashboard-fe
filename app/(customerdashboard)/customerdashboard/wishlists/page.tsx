@@ -161,7 +161,7 @@ function WishlistCard({ item, onRemove, onAddToCart, onMoveToCart, onVariantChan
   const isMovingToCart = actionLoading[`cart-${product.id}`];
   
   const productSlug = createProductSlug(product.title);
-  const frontendUrl = `http://madeinarnhemland.com.au/shop/${productSlug}`;
+  const frontendUrl = `https://madeinarnhemland.com.au/shop/${productSlug}`;
   
   return (
     <Card className="overflow-hidden">
@@ -300,7 +300,7 @@ function WishlistTable({ items, onRemove, onAddToCart, onMoveToCart, onVariantCh
           const isMovingToCart = actionLoading[`cart-${product.id}`];
           
           const productSlug = createProductSlug(product.title);
-          const frontendUrl = `http://madeinarnhemland.com.au/shop/${productSlug}`;
+          const frontendUrl = `https://madeinarnhemland.com.au/shop/${productSlug}`;
           
           return (
             <TableRow key={item.id}>

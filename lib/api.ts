@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
 
 // Get auth token from localStorage (check both keys for compatibility)
 const getAuthToken = () => {
@@ -75,8 +75,8 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
 
       if (typeof window !== "undefined") {
         window.location.replace(
-          "http://madeinarnhemland.com.au/logout-callback?redirect=" +
-          encodeURIComponent("http://madeinarnhemland.com.au")
+          "https://madeinarnhemland.com.au/logout-callback?redirect=" +
+          encodeURIComponent("https://madeinarnhemland.com.au")
         );
       }
       throw new Error("Session expired. Please login again.");

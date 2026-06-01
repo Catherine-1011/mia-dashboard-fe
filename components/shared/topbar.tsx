@@ -228,7 +228,7 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 				// 3. Fire-and-forget backend token invalidation — no await so it
 				//    never blocks the redirect regardless of server response time.
 				fetch(
-					`${process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au"}/api/auth/logout`,
+					`${process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au"}/api/auth/logout`,
 					{
 						method: "POST",
 						credentials: "include",
@@ -241,8 +241,8 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 
 				// 4. Redirect to Webapp's logout-callback so it also clears its session.
 				window.location.replace(
-					"http://madeinarnhemland.com.au/logout-callback?redirect=" +
-					encodeURIComponent("http://madeinarnhemland.com.au")
+					"https://madeinarnhemland.com.au/logout-callback?redirect=" +
+					encodeURIComponent("https://madeinarnhemland.com.au")
 				);
 			}
 		};

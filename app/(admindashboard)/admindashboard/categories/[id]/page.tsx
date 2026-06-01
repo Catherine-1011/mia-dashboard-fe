@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryAuditHistory } from "@/components/shared/category-audit-history";
 import { cn } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type CategoryStatus = "APPROVED" | "PENDING" | "REJECTED" | "DELETED";

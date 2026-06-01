@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AuditLogDiffModal, type AuditLogEntry } from "@/components/shared/audit-log-diff-modal";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au";
 
 // ─── Action badge config ───────────────────────────────────────────────────────
 const ACTION_CONFIG: Record<string, { label: string; className: string; initial: string }> = {

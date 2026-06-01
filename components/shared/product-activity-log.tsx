@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://134.199.161.119:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export type ProductLogEvent =

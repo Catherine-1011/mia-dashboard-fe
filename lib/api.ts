@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
 
 // Get auth token from localStorage (check both keys for compatibility)
 const getAuthToken = () => {

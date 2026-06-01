@@ -228,7 +228,7 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 				// 3. Fire-and-forget backend token invalidation — no await so it
 				//    never blocks the redirect regardless of server response time.
 				fetch(
-					`${process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au"}/api/auth/logout`,
+					`${process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au"}/api/auth/logout`,
 					{
 						method: "POST",
 						credentials: "include",

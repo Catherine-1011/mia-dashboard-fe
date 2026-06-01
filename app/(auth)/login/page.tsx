@@ -38,7 +38,7 @@ const formSchema = z.object({
 });
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au";
+  process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
 
 // Login API function
 async function loginUser(email: string, password: string) {
@@ -495,7 +495,7 @@ function LoginForm() {
               <div className="flex-1 border-t border-border" />
             </div>
             {/* <a
-              href={`backend.madeinarnhemland.com.au/api/auth/saml/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
+              href={`http://backend.madeinarnhemland.com.au/api/auth/saml/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
               className="w-full"
             > */}
             <a

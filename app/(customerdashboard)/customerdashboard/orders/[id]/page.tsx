@@ -85,7 +85,7 @@ export default function CustomerOrderDetailPage() {
       const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;
       const cleanId = (order.displayId ?? "").replace(/^#/, "");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au"}/api/orders/invoice/${cleanId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au"}/api/orders/invoice/${cleanId}`,
         { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
       );
       if (!response.ok) {

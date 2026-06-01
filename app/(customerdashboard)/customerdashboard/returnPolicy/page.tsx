@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://backend.madeinarnhemland.com.au";
 
 function getAuthHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;

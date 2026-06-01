@@ -16,7 +16,7 @@ import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // --- CONFIGURATION ---
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend.madeinarnhemland.com.au";
 
 // --- HELPER: Get Auth Token ---
 const getAuthToken = () => {

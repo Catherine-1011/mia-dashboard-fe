@@ -3,7 +3,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, CreditCard, DollarSign, Users } from "lucide-react";
+import { Activity, CreditCard, DollarSign, Users, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -22,10 +23,25 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [slaData, setSlaData] = useState<any>(null);
   const [loadingSla, setLoadingSla] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
   // Track acknowledge loading and status for each notification
   const [ackState, setAckState] = useState<
     Record<string, { loading: boolean; acknowledged: boolean }>
   >({});
+
+  const handleGoToStripe = async () => {
+    try {
+      setStripeLoading(true);
+      const data = await api.get("/api/seller-onboarding/stripe/login-link");
+      const url = data?.url;
+      if (!url) throw new Error("No Stripe URL returned");
+      window.open(url, "_blank");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to get Stripe login link");
+    } finally {
+      setStripeLoading(false);
+    }
+  };
 
   // Fetch analytics data from API
   const fetchAnalytics = async () => {
@@ -177,11 +193,26 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 p-8">
       {/* Header Section */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-lg">
-          Welcome back! Here&apos;s an overview of your data.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-lg">
+            Welcome back! Here&apos;s an overview of your data.
+          </p>
+        </div>
+        <Button
+          onClick={handleGoToStripe}
+          disabled={stripeLoading}
+          className="gap-2 shrink-0"
+          variant="outline"
+        >
+          {stripeLoading ? (
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" className="opacity-25" /><path d="M12 2a10 10 0 0 1 10 10" className="opacity-75" /></svg>
+          ) : (
+            <ExternalLink className="h-4 w-4" />
+          )}
+          Go to Stripe Account
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

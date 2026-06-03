@@ -8,7 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Truck, DollarSign, Clock, Edit, Trash2, Loader2, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Truck, DollarSign, Clock, Edit, Trash2, Loader2, X, Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -110,6 +118,39 @@ const updateShippingMethod = async (id: string, data: {
   return response.json();
 };
 
+const fetchAdminSettings = async () => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token found. Please log in.");
+
+  const response = await fetch(`${BASE_URL}/api/admin/settings`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) throw new Error("Failed to fetch admin settings");
+  return response.json();
+};
+
+const updateInternationalShipping = async (enabled: boolean) => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token found. Please log in.");
+
+  const response = await fetch(`${BASE_URL}/api/admin/settings/international-shipping`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ enabled }),
+  });
+
+  if (!response.ok) throw new Error("Failed to update international shipping setting");
+  return response.json();
+};
+
 function ShippingPage() {
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +160,11 @@ function ShippingPage() {
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [editShippingId, setEditShippingId] = useState<string | null>(null);
+  const [internationalShippingEnabled, setInternationalShippingEnabled] = useState(false);
+  const [internationalShippingLoading, setInternationalShippingLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [showIntlConfirm, setShowIntlConfirm] = useState(false);
+  const [pendingIntlEnabled, setPendingIntlEnabled] = useState<boolean | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -141,10 +187,46 @@ function ShippingPage() {
     if (!token) {
       toast.error("Please log in to view shipping methods");
       setLoading(false);
+      setSettingsLoading(false);
       return;
     }
     loadShippingMethods();
+    loadAdminSettings();
   }, []);
+
+  const loadAdminSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const data = await fetchAdminSettings();
+      setInternationalShippingEnabled(data.data?.internationalShippingEnabled ?? false);
+    } catch (error) {
+      toast.error((error as Error).message || "Failed to load admin settings");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const requestToggleInternationalShipping = (enabled: boolean) => {
+    setPendingIntlEnabled(enabled);
+    setShowIntlConfirm(true);
+  };
+
+  const handleToggleInternationalShipping = async () => {
+    if (pendingIntlEnabled === null) return;
+    const enabled = pendingIntlEnabled;
+    setShowIntlConfirm(false);
+    try {
+      setInternationalShippingLoading(true);
+      const data = await updateInternationalShipping(enabled);
+      setInternationalShippingEnabled(data.data?.internationalShippingEnabled ?? enabled);
+      toast.success(data.message || `International shipping ${enabled ? "enabled" : "disabled"} successfully`);
+    } catch (error) {
+      toast.error((error as Error).message || "Failed to update international shipping setting");
+    } finally {
+      setInternationalShippingLoading(false);
+      setPendingIntlEnabled(null);
+    }
+  };
 
   const loadShippingMethods = async () => {
     try {
@@ -330,6 +412,40 @@ function ShippingPage() {
           </Button>
         </div>
       </div>
+
+      {/* International Shipping Settings */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base font-semibold">International Shipping</CardTitle>
+          </div>
+          <CardDescription>Allow customers to ship orders to international destinations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20 hover:bg-muted/30 transition-colors">
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">Enable International Shipping</p>
+              <p className="text-[11px] text-muted-foreground">
+                {settingsLoading
+                  ? "Loading..."
+                  : internationalShippingEnabled
+                  ? "International shipping is currently enabled"
+                  : "International shipping is currently disabled"}
+              </p>
+            </div>
+            {settingsLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <Switch
+                checked={internationalShippingEnabled}
+                onCheckedChange={requestToggleInternationalShipping}
+                disabled={internationalShippingLoading}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -530,6 +646,46 @@ function ShippingPage() {
           </Card>
         </div>
       )}
+
+      {/* International Shipping Confirm Dialog */}
+      <Dialog open={showIntlConfirm} onOpenChange={(open) => { if (!open) { setShowIntlConfirm(false); setPendingIntlEnabled(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <DialogTitle className="text-lg">
+                {pendingIntlEnabled ? "Enable" : "Disable"} International Shipping
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-muted-foreground pl-[52px]">
+              {pendingIntlEnabled
+                ? "This will allow customers to place orders for international destinations. Are you sure you want to enable international shipping?"
+                : "This will prevent customers from placing orders for international destinations. Are you sure you want to disable international shipping?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowIntlConfirm(false); setPendingIntlEnabled(null); }}
+              disabled={internationalShippingLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={pendingIntlEnabled ? "default" : "destructive"}
+              onClick={handleToggleInternationalShipping}
+              disabled={internationalShippingLoading}
+            >
+              {internationalShippingLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {pendingIntlEnabled ? "Yes, Enable" : "Yes, Disable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Shipping Modal */}
       {showEditModal && (

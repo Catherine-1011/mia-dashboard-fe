@@ -69,6 +69,8 @@ export interface ImageCropModalProps {
    * Defaults to 1 (square). Pass e.g. 4/3 for landscape, 3/4 for portrait.
    */
   aspectRatio?: number;
+  /** Optional title shown in the modal header. Defaults to "Adjust Featured Image". */
+  title?: string;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ export function ImageCropModal({
   onCropDone,
   onCancel,
   aspectRatio = 1,
+  title = "Adjust Featured Image",
 }: ImageCropModalProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -123,7 +126,7 @@ export function ImageCropModal({
         <DialogHeader className="px-5 pt-5 pb-3 border-b">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Crop className="h-4 w-4 text-primary" />
-            Adjust Featured Image
+            {title}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
             Drag to reposition · Use the slider to zoom

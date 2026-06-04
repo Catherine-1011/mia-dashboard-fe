@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Package, DollarSign, Edit, X, Search, Check, ChevronDown, ChevronLeft, ChevronRight, Eye, CheckCircle, XCircle, AlertCircle, Trash2, RotateCcw, Layers, RefreshCcw, Plus, Crop } from "lucide-react";
 import { ImageCropModal } from "@/components/shared/image-crop-modal";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, validateImageFiles } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Image as LucideImage } from "lucide-react";
@@ -277,20 +277,47 @@ export default function AdminProductsPage() {
   const editGalleryImagesRef = useRef<HTMLInputElement>(null);
 
   // ── Crop modal state
-  const [cropPending, setCropPending] = useState<{ file: File; objectUrl: string } | null>(null);
+  const [cropPending, setCropPending] = useState<{ file: File; objectUrl: string; target: "featured" | "gallery"; galleryReplaceIndex?: number } | null>(null);
+  const galleryCropQueueRef = useRef<File[]>([]);
 
-  const openCrop = (file: File) => {
-    setCropPending({ file, objectUrl: URL.createObjectURL(file) });
+  const openCrop = (file: File, target: "featured" | "gallery" = "featured", galleryReplaceIndex?: number) => {
+    setCropPending({ file, objectUrl: URL.createObjectURL(file), target, galleryReplaceIndex });
   };
 
   const handleCropDone = (croppedFile: File) => {
-    if (cropPending) URL.revokeObjectURL(cropPending.objectUrl);
-    setEditFormData((prev) => ({ ...prev, featuredImage: croppedFile }));
-    setCropPending(null);
+    if (!cropPending) return;
+    URL.revokeObjectURL(cropPending.objectUrl);
+    if (cropPending.target === "featured") {
+      setEditFormData((prev) => ({ ...prev, featuredImage: croppedFile }));
+      setCropPending(null);
+    } else {
+      // gallery crop
+      if (cropPending.galleryReplaceIndex !== undefined) {
+        // re-crop an existing gallery image
+        const updated = [...editGalleryAccumRef.current];
+        updated[cropPending.galleryReplaceIndex] = croppedFile;
+        editGalleryAccumRef.current = updated;
+        setEditFormData((prev) => ({ ...prev, galleryImages: [...editGalleryAccumRef.current] }));
+        setCropPending(null);
+      } else {
+        // queued new gallery images
+        editGalleryAccumRef.current = [...editGalleryAccumRef.current, croppedFile];
+        setEditFormData((prev) => ({ ...prev, galleryImages: [...editGalleryAccumRef.current] }));
+        const remaining = galleryCropQueueRef.current.slice(1);
+        galleryCropQueueRef.current = remaining;
+        if (remaining.length > 0) {
+          const next = remaining[0];
+          setCropPending({ file: next, objectUrl: URL.createObjectURL(next), target: "gallery" });
+        } else {
+          setCropPending(null);
+        }
+      }
+    }
   };
 
   const handleCropCancel = () => {
     if (cropPending) URL.revokeObjectURL(cropPending.objectUrl);
+    galleryCropQueueRef.current = [];
     setCropPending(null);
   };
   // ────────────────────────────────────────
@@ -1250,9 +1277,9 @@ export default function AdminProductsPage() {
               {paginatedProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-muted/20">
                     <td className="px-4 py-2">
-                      {(product.featuredImage || product.images?.length) ? (
-                        <NextImage src={product.featuredImage || product.images![0]} alt={product.title || "Product"} width={48} height={48}
-                          className="h-12 w-12 object-cover rounded"
+                      {(product.featuredImage || product.images?.length || product.galleryImages?.length) ? (
+                        <NextImage src={product.featuredImage || product.images?.[0] || product.galleryImages![0]} alt={product.title || "Product"} width={48} height={48}
+                          className="h-12 w-12 object-cover rounded" unoptimized
                           onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/100x100?text=No+Image"; }} />
                       ) : (
                         <div className="h-12 w-12 flex items-center justify-center bg-muted rounded">
@@ -2223,10 +2250,15 @@ export default function AdminProductsPage() {
               <input
                 ref={editFeaturedImageRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                 onChange={(e) => {
                   const file = e.target.files?.[0] ?? null;
-                  if (file) { e.target.value = ""; openCrop(file); }
+                  if (file) {
+                    e.target.value = "";
+                    const err = validateImageFiles([file]);
+                    if (err) { toast.error(err, { duration: 7000 }); return; }
+                    openCrop(file);
+                  }
                 }}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
               />
@@ -2284,14 +2316,16 @@ export default function AdminProductsPage() {
               <input
                 ref={editGalleryImagesRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                 multiple
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     const newFiles = Array.from(e.target.files);
-                    editGalleryAccumRef.current = [...editGalleryAccumRef.current, ...newFiles];
-                    setEditFormData((prev) => ({ ...prev, galleryImages: [...editGalleryAccumRef.current] }));
                     e.target.value = "";
+                    const err = validateImageFiles(newFiles);
+                    if (err) { toast.error(err, { duration: 7000 }); return; }
+                    galleryCropQueueRef.current = newFiles;
+                    openCrop(newFiles[0], "gallery");
                   }
                 }}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
@@ -2312,14 +2346,18 @@ export default function AdminProductsPage() {
                   <div key={`new-${idx}`} className="relative group h-24 w-24 rounded-lg border-2 border-muted overflow-hidden bg-background shadow-sm">
                     <NextImage src={URL.createObjectURL(file)} alt={`New ${idx}`} fill className="object-cover transition-transform group-hover:scale-110" />
                     <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-white text-[9px] text-center py-0.5">New</span>
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Button variant="destructive" size="icon" className="h-7 w-7 rounded-full"
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                      <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-white/90 text-foreground hover:bg-white"
+                        onClick={() => { galleryCropQueueRef.current = []; openCrop(file, "gallery", idx); }}>
+                        <Crop className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="destructive" size="icon" className="h-6 w-6 rounded-full"
                         onClick={() => {
                           const updated = editFormData.galleryImages.filter((_, i) => i !== idx);
                           editGalleryAccumRef.current = updated;
                           setEditFormData((prev) => ({ ...prev, galleryImages: updated }));
                         }}>
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -2350,6 +2388,7 @@ export default function AdminProductsPage() {
         onCropDone={handleCropDone}
         onCancel={handleCropCancel}
         aspectRatio={3/2}
+        title={cropPending?.target === "gallery" ? "Adjust Gallery Image" : "Adjust Featured Image"}
       />
 
       {/* View Deleted Product Dialog */}

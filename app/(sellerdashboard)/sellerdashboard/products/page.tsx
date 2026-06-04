@@ -13,7 +13,7 @@ import { Plus, Package, DollarSign, Edit, Trash2, Loader2, X, Eye, Search, Check
 import Image from "next/image";
 import { toast } from "sonner";
 import { apiClient, api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, validateImageFiles } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -237,7 +237,14 @@ const addProduct = async (productData: {
     },
     body: form,
   });
-  if (!response.ok) throw new Error("Failed to add product");
+  if (!response.ok) {
+    let errMsg = "Failed to add product";
+    try {
+      const errData = await response.json();
+      errMsg = errData.message || errData.error || errMsg;
+    } catch {}
+    throw new Error(errMsg);
+  }
   return response.json();
 };
 
@@ -659,8 +666,9 @@ function ProjectsPage() {
       toast.success("Product added successfully!");
       closeAddModal();
       loadProducts();
-    } catch {
-      toast.error("Failed to add product");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to add product";
+      toast.error(msg, { duration: 6000 });
     } finally {
       setSubmitting(false);
     }
@@ -735,25 +743,59 @@ function ProjectsPage() {
   };
 
   // ── Crop modal state ──────────────────────────────────────────────────────
-  const [cropPending, setCropPending] = useState<{ file: File; objectUrl: string; target: "add" | "edit" } | null>(null);
+  type CropTarget = "add-featured" | "edit-featured" | "add-gallery" | "edit-gallery";
+  const [cropPending, setCropPending] = useState<{ file: File; objectUrl: string; target: CropTarget; galleryReplaceIndex?: number } | null>(null);
+  const galleryCropQueueRef = useRef<File[]>([]);
 
-  const openCrop = (file: File, target: "add" | "edit") => {
-    setCropPending({ file, objectUrl: URL.createObjectURL(file), target });
+  const openCrop = (file: File, target: CropTarget, galleryReplaceIndex?: number) => {
+    setCropPending({ file, objectUrl: URL.createObjectURL(file), target, galleryReplaceIndex });
   };
 
   const handleCropDone = (croppedFile: File) => {
     if (!cropPending) return;
     URL.revokeObjectURL(cropPending.objectUrl);
-    if (cropPending.target === "add") {
+    const { target } = cropPending;
+
+    if (target === "add-featured") {
       setFormData(prev => ({ ...prev, featuredImage: croppedFile }));
-    } else {
+      setCropPending(null);
+    } else if (target === "edit-featured") {
       setEditFormData(prev => ({ ...prev, featuredImage: croppedFile }));
+      setCropPending(null);
+    } else {
+      // gallery crop (add-gallery or edit-gallery)
+      const isEdit = target === "edit-gallery";
+      const accumRef = isEdit ? editGalleryAccumRef : addGalleryAccumRef;
+      const setData = isEdit
+        ? (fn: (prev: typeof editFormData) => typeof editFormData) => setEditFormData(fn)
+        : (fn: (prev: typeof formData) => typeof formData) => setFormData(fn);
+
+      if (cropPending.galleryReplaceIndex !== undefined) {
+        // re-crop an existing gallery image at a specific index
+        const updated = [...accumRef.current];
+        updated[cropPending.galleryReplaceIndex] = croppedFile;
+        accumRef.current = updated;
+        setData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        setCropPending(null);
+      } else {
+        // queued new gallery images
+        accumRef.current = [...accumRef.current, croppedFile];
+        setData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        const remaining = galleryCropQueueRef.current.slice(1);
+        galleryCropQueueRef.current = remaining;
+        if (remaining.length > 0) {
+          const next = remaining[0];
+          setCropPending({ file: next, objectUrl: URL.createObjectURL(next), target });
+        } else {
+          setCropPending(null);
+        }
+      }
     }
-    setCropPending(null);
   };
 
   const handleCropCancel = () => {
     if (cropPending) URL.revokeObjectURL(cropPending.objectUrl);
+    galleryCropQueueRef.current = [];
     setCropPending(null);
   };
   // ─────────────────────────────────────────────────────────────────────────
@@ -762,24 +804,28 @@ function ProjectsPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       e.target.value = "";
-      openCrop(file, "add");
+      const err = validateImageFiles([file]);
+      if (err) { toast.error(err, { duration: 7000 }); return; }
+      openCrop(file, "add-featured");
     }
   };
 
   const handleGalleryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      // Append to mutable ref (always current at submit time)
-      addGalleryAccumRef.current = [...addGalleryAccumRef.current, ...newFiles];
-      // Also update state so previews re-render
-      setFormData(prev => ({ ...prev, galleryImages: [...addGalleryAccumRef.current] }));
       e.target.value = "";
+      const err = validateImageFiles(newFiles);
+      if (err) { toast.error(err, { duration: 7000 }); return; }
+      galleryCropQueueRef.current = newFiles;
+      openCrop(newFiles[0], "add-gallery");
     }
   };
 
   const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
+      const err = validateImageFiles(files);
+      if (err) { e.target.value = ""; toast.error(err, { duration: 7000 }); return; }
       setEditFormData(prev => ({ ...prev, images: files }));
     }
   };
@@ -788,18 +834,20 @@ function ProjectsPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       e.target.value = "";
-      openCrop(file, "edit");
+      const err = validateImageFiles([file]);
+      if (err) { toast.error(err, { duration: 7000 }); return; }
+      openCrop(file, "edit-featured");
     }
   };
 
   const handleEditGalleryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      // Append to mutable ref (always current at submit time)
-      editGalleryAccumRef.current = [...editGalleryAccumRef.current, ...newFiles];
-      // Also update state so previews re-render
-      setEditFormData(prev => ({ ...prev, galleryImages: [...editGalleryAccumRef.current] }));
       e.target.value = "";
+      const err = validateImageFiles(newFiles);
+      if (err) { toast.error(err, { duration: 7000 }); return; }
+      galleryCropQueueRef.current = newFiles;
+      openCrop(newFiles[0], "edit-gallery");
     }
   };
 
@@ -2573,7 +2621,7 @@ function ProjectsPage() {
                         ref={editFeaturedImageRef}
                         id="edit-featuredImage"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                         onChange={handleEditFeaturedImageChange}
                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
                       />
@@ -2618,7 +2666,7 @@ function ProjectsPage() {
                               variant="outline"
                               size="sm"
                               className="h-7 text-xs gap-1.5 mt-1"
-                              onClick={() => openCrop(editFormData.featuredImage!, "edit")}
+                              onClick={() => openCrop(editFormData.featuredImage!, "edit-featured")}
                             >
                               <Crop className="h-3.5 w-3.5" />
                               Re-crop
@@ -2643,7 +2691,7 @@ function ProjectsPage() {
                         ref={editGalleryImagesRef}
                         id="edit-galleryImages"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                         multiple
                         onChange={handleEditGalleryImageChange}
                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
@@ -2680,13 +2728,17 @@ function ProjectsPage() {
                               height={96}
                             />
                             <span className="absolute bottom-0 left-0 right-0 bg-primary/80 text-white text-[9px] text-center py-0.5">New</span>
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Button variant="destructive" size="icon" className="h-7 w-7 rounded-full" onClick={() => {
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                              <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-white/90 text-foreground hover:bg-white"
+                                onClick={() => { galleryCropQueueRef.current = []; openCrop(file, "edit-gallery", idx); }}>
+                                <Crop className="h-3 w-3" />
+                              </Button>
+                              <Button variant="destructive" size="icon" className="h-6 w-6 rounded-full" onClick={() => {
                                 const updated = editFormData.galleryImages.filter((_, i) => i !== idx);
                                 editGalleryAccumRef.current = updated; // keep ref in sync
                                 setEditFormData(prev => ({ ...prev, galleryImages: updated }));
                               }}>
-                                <X className="h-4 w-4" />
+                                <X className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
@@ -3352,7 +3404,7 @@ function ProjectsPage() {
                   ref={addFeaturedImageRef}
                   id="featuredImage"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                   onChange={handleFeaturedImageChange}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
                 />
@@ -3383,7 +3435,7 @@ function ProjectsPage() {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs gap-1.5 mt-1"
-                        onClick={() => openCrop(formData.featuredImage!, "add")}
+                        onClick={() => openCrop(formData.featuredImage!, "add-featured")}
                       >
                         <Crop className="h-3.5 w-3.5" />
                         Re-crop
@@ -3407,7 +3459,7 @@ function ProjectsPage() {
                   ref={addGalleryImagesRef}
                   id="galleryImages"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                   multiple
                   onChange={handleGalleryImageChange}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
@@ -3422,18 +3474,26 @@ function ProjectsPage() {
                         width={96}
                         height={96}
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-white/90 text-foreground hover:bg-white"
+                          onClick={() => { galleryCropQueueRef.current = []; openCrop(file, "add-gallery", idx); }}
+                        >
+                          <Crop className="h-3 w-3" />
+                        </Button>
                         <Button
                           variant="destructive"
                           size="icon"
-                          className="h-7 w-7 rounded-full"
+                          className="h-6 w-6 rounded-full"
                           onClick={() => {
                             const updated = formData.galleryImages.filter((_, i) => i !== idx);
                             addGalleryAccumRef.current = updated; // keep ref in sync
                             setFormData(prev => ({ ...prev, galleryImages: updated }));
                           }}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -3464,6 +3524,7 @@ function ProjectsPage() {
         onCropDone={handleCropDone}
         onCancel={handleCropCancel}
         aspectRatio={3/2}
+        title={cropPending?.target === "add-gallery" || cropPending?.target === "edit-gallery" ? "Adjust Gallery Image" : "Adjust Featured Image"}
       />
 
       {/* View Deleted Product Dialog */}

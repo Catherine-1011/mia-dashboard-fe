@@ -487,9 +487,7 @@ export default function DashboardPage() {
                       <div
                         key={notification.id}
                         className={`flex items-start gap-4 p-3 rounded-lg border ${bgColor} cursor-pointer hover:opacity-80 transition-opacity`}
-                        onClick={(e) => {
-                          // Don't navigate when clicking the acknowledge button
-                          if ((e.target as HTMLElement).closest("button")) return;
+                        onClick={() => {
                           if (notification.order?.id) router.push(`/sellerdashboard/orders?highlight=${notification.order.id}`);
                         }}
                       >
@@ -527,56 +525,12 @@ export default function DashboardPage() {
                                 </span>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end ml-2 gap-2">
+                            <div className="flex flex-col items-end ml-2">
                               <span className="text-xs text-muted-foreground">
                                 {new Date(
                                   notification.createdAt,
                                 ).toLocaleDateString('en-GB')}
                               </span>
-                              <button
-                                className={`px-3 py-1 rounded text-xs font-medium border ${ack.acknowledged ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 cursor-default" : "bg-background text-foreground border-border hover:bg-muted"} disabled:opacity-60`}
-                                disabled={ack.loading || ack.acknowledged}
-                                onClick={async () => {
-                                  setAckState((prev) => ({
-                                    ...prev,
-                                    [notification.id]: {
-                                      ...ack,
-                                      loading: true,
-                                    },
-                                  }));
-                                  try {
-                                    await api.patch(
-                                      `/api/seller/notifications/${notification.id}/acknowledge`,
-                                    );
-                                    toast.success("Notification acknowledged");
-                                    setAckState((prev) => ({
-                                      ...prev,
-                                      [notification.id]: {
-                                        loading: false,
-                                        acknowledged: true,
-                                      },
-                                    }));
-                                    persistAck(notification.id);
-                                  } catch {
-                                    toast.error(
-                                      "Failed to acknowledge notification",
-                                    );
-                                    setAckState((prev) => ({
-                                      ...prev,
-                                      [notification.id]: {
-                                        ...ack,
-                                        loading: false,
-                                      },
-                                    }));
-                                  }
-                                }}
-                              >
-                                {ack.loading
-                                  ? "Acknowledging..."
-                                  : ack.acknowledged
-                                    ? "Acknowledged"
-                                    : "Acknowledge"}
-                              </button>
                             </div>
                           </div>
                         </div>

@@ -66,16 +66,9 @@ export default function SellersPage() {
     setLoading(true);
     try {
       const res = await api.get("/api/admin/sellers");
-      console.log("[Sellers] API response:", res);
-      const list =
-        res.sellers ??
-        res.data ??
-        res.result ??
-        (Array.isArray(res) ? res : []);
-      setSellers(list);
-    } catch (err: any) {
-      console.error("[Sellers] Fetch error:", err);
-      toast.error(err?.message || "Failed to load sellers");
+      setSellers(res.sellers || []);
+    } catch (err) {
+      toast.error("Failed to load sellers");
       setSellers([]);
     } finally {
       setLoading(false);
@@ -148,8 +141,8 @@ export default function SellersPage() {
 
   const filtered = sellers
     .filter((seller) => {
-      if (tab === "pending") return seller.status?.toUpperCase() === "PENDING";
-      if (tab === "rejected") return seller.status?.toUpperCase() === "REJECTED";
+      if (tab === "pending") return seller.status === "PENDING";
+      if (tab === "rejected") return seller.status === "REJECTED";
       return true;
     })
     .filter((seller) => {
@@ -201,9 +194,9 @@ export default function SellersPage() {
           <TabsTrigger value="all">All Sellers</TabsTrigger>
           <TabsTrigger value="pending">
             Pending
-            {sellers.filter((s) => s.status?.toUpperCase() === "PENDING").length > 0 && (
+            {sellers.filter((s) => s.status === "PENDING").length > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-orange-500 text-white text-[10px] font-bold h-4 min-w-4 px-1">
-                {sellers.filter((s) => s.status?.toUpperCase() === "PENDING").length}
+                {sellers.filter((s) => s.status === "PENDING").length}
               </span>
             )}
           </TabsTrigger>
@@ -294,16 +287,16 @@ export default function SellersPage() {
                           <TableCell>
                             <Badge
                               variant={
-                                seller.status?.toUpperCase() === "ACTIVE"
+                                seller.status === "ACTIVE"
                                   ? "default"
-                                  : seller.status?.toUpperCase() === "PENDING"
+                                  : seller.status === "PENDING"
                                   ? "secondary"
-                                  : seller.status?.toUpperCase() === "REJECTED"
+                                  : seller.status === "REJECTED"
                                   ? "outline"
                                   : "secondary"
                               }
                             >
-                              {seller.status ? seller.status.charAt(0).toUpperCase() + seller.status.slice(1).toLowerCase() : "—"}
+                              {seller.status.charAt(0) + seller.status.slice(1).toLowerCase()}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -328,7 +321,7 @@ export default function SellersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1 justify-end">
-                              {seller.status?.toUpperCase() === "PENDING" && (
+                              {seller.status === "PENDING" && (
                                 <>
                                   <Button
                                     size="sm"
@@ -360,7 +353,7 @@ export default function SellersPage() {
                                   </Button>
                                 </>
                               )}
-                              {seller.status?.toUpperCase() === "APPROVED" && (
+                              {seller.status === "APPROVED" && (
                                 <Button
                                   size="sm"
                                   variant="secondary"

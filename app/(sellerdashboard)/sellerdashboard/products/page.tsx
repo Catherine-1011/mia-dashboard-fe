@@ -766,21 +766,26 @@ function ProjectsPage() {
       // gallery crop (add-gallery or edit-gallery)
       const isEdit = target === "edit-gallery";
       const accumRef = isEdit ? editGalleryAccumRef : addGalleryAccumRef;
-      const setData = isEdit
-        ? (fn: (prev: typeof editFormData) => typeof editFormData) => setEditFormData(fn)
-        : (fn: (prev: typeof formData) => typeof formData) => setFormData(fn);
 
       if (cropPending.galleryReplaceIndex !== undefined) {
         // re-crop an existing gallery image at a specific index
         const updated = [...accumRef.current];
         updated[cropPending.galleryReplaceIndex] = croppedFile;
         accumRef.current = updated;
-        setData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        if (isEdit) {
+          setEditFormData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        } else {
+          setFormData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        }
         setCropPending(null);
       } else {
         // queued new gallery images
         accumRef.current = [...accumRef.current, croppedFile];
-        setData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        if (isEdit) {
+          setEditFormData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        } else {
+          setFormData(prev => ({ ...prev, galleryImages: [...accumRef.current] }));
+        }
         const remaining = galleryCropQueueRef.current.slice(1);
         galleryCropQueueRef.current = remaining;
         if (remaining.length > 0) {

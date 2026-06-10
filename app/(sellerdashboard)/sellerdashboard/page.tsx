@@ -23,24 +23,14 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [slaData, setSlaData] = useState<any>(null);
   const [loadingSla, setLoadingSla] = useState(false);
-  const [stripeLoading, setStripeLoading] = useState(false);
+
   // Track acknowledge loading and status for each notification
   const [ackState, setAckState] = useState<
     Record<string, { loading: boolean; acknowledged: boolean }>
   >({});
 
-  const handleGoToStripe = async () => {
-    try {
-      setStripeLoading(true);
-      const data = await api.get("/api/seller-onboarding/stripe/login-link");
-      const url = data?.url;
-      if (!url) throw new Error("No Stripe URL returned");
-      window.open(url, "_blank");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to get Stripe login link");
-    } finally {
-      setStripeLoading(false);
-    }
+  const handleGoToStripe = () => {
+    window.open("https://dashboard.stripe.com", "_blank");
   };
 
   // Fetch analytics data from API
@@ -202,16 +192,11 @@ export default function DashboardPage() {
         </div>
         <Button
           onClick={handleGoToStripe}
-          disabled={stripeLoading}
           className="gap-2 shrink-0"
           variant="outline"
         >
-          {stripeLoading ? (
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" className="opacity-25" /><path d="M12 2a10 10 0 0 1 10 10" className="opacity-75" /></svg>
-          ) : (
-            <ExternalLink className="h-4 w-4" />
-          )}
-          Go to Stripe Account
+          <ExternalLink className="h-4 w-4" />
+          Go to Stripe Dashboard
         </Button>
       </div>
 

@@ -26,35 +26,6 @@ const getAuthToken = () => {
   return localStorage.getItem("alpa_token");
 };
 
-// --- Seller Profile Type ---
-type SellerProfile = {
-  id: string;
-  status: string;
-  approvedAt?: string | null;
-  storeName?: string;
-  businessName?: string;
-};
-
-// --- FETCH SELLER PROFILE ---
-const fetchSellerProfile = async (): Promise<SellerProfile> => {
-  const token = getAuthToken();
-  if (!token) throw new Error("No authentication token found. Please log in.");
-  
-  const response = await fetch(`${BASE_URL}/api/seller-profile`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-  });
-  
-  if (response.status === 401) throw new Error("Unauthorized: Please log in again.");
-  if (!response.ok) throw new Error("Failed to fetch seller profile");
-  
-  const data = await response.json();
-  return data.data;
-};
-
 interface Category {
   id?: string | null;
   categoryName: string;
@@ -110,11 +81,6 @@ const CategoriesPage = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState("available");
-  
-  // Seller profile state
-  const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [userInteracting, setUserInteracting] = useState(false);
 
   const form = useForm<CategoryRequestForm>({
     defaultValues: {
@@ -125,67 +91,7 @@ const CategoriesPage = () => {
 
   useEffect(() => {
     fetchCategories();
-    loadSellerProfile();
   }, []);
-
-  const loadSellerProfile = async () => {
-    try {
-      setProfileLoading(true);
-      const profile = await fetchSellerProfile();
-      setSellerProfile(profile);
-    } catch (error) {
-      console.error('Error fetching seller profile:', error);
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  // Auto-refresh seller profile when page gains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      if (!profileLoading && sellerProfile && !userInteracting) {
-        loadSellerProfile();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !profileLoading && sellerProfile && !userInteracting) {
-        loadSellerProfile();
-      }
-    };
-
-    // Track user interactions to prevent auto-refresh interference
-    const handleUserInteraction = () => {
-      setUserInteracting(true);
-      // Clear the flag after 5 seconds of no interaction
-      setTimeout(() => setUserInteracting(false), 5000);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('keydown', handleUserInteraction);
-    document.addEventListener('scroll', handleUserInteraction);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      document.removeEventListener('scroll', handleUserInteraction);
-    };
-  }, [profileLoading, sellerProfile, userInteracting]);
-
-  // Periodic check every 2 minutes for status changes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!profileLoading && sellerProfile && sellerProfile.status !== "APPROVED" && sellerProfile.status !== "ACTIVE" && !userInteracting) {
-        loadSellerProfile();
-      }
-    }, 120000); // 2 minutes
-
-    return () => clearInterval(interval);
-  }, [profileLoading, sellerProfile, userInteracting]);
 
   const fetchCategories = async () => {
     try {
@@ -206,12 +112,6 @@ const CategoriesPage = () => {
   };
 
   const onSubmit = async (data: CategoryRequestForm) => {
-    // Check seller approval status before allowing category request
-    if (sellerProfile?.status !== "APPROVED" && sellerProfile?.status !== "ACTIVE") {
-      toast.error("Your account needs to be approved before you can request categories");
-      return;
-    }
-    
     try {
       setIsSubmitting(true);
       const response = await apiClient("/api/categories/request", {
@@ -262,6 +162,10 @@ const CategoriesPage = () => {
 
   const myTotalProducts = categories.reduce((sum, cat) => sum + (cat.myProductCount || 0), 0);
 
+  function setUserInteracting(arg0: boolean) {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -274,16 +178,7 @@ const CategoriesPage = () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) form.reset(); }}>
           <DialogTrigger asChild>
-            <Button 
-              className={cn("gap-2", sellerProfile !== null && sellerProfile?.status !== "APPROVED" && sellerProfile?.status !== "ACTIVE" && "opacity-50 cursor-not-allowed")}
-              onClick={() => {
-                if (sellerProfile !== null && sellerProfile?.status !== "APPROVED" && sellerProfile?.status !== "ACTIVE") {
-                  toast.error("Your account needs to be approved before you can request categories");
-                  return;
-                }
-              }}
-              disabled={sellerProfile !== null && sellerProfile?.status !== "APPROVED" && sellerProfile?.status !== "ACTIVE"}
-            >
+            <Button className="gap-2">
               <Plus className="w-4 h-4" />
               Request Category
             </Button>

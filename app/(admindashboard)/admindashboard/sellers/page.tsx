@@ -15,14 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
-  Check,
   X,
   Eye,
-  Flag,
   Loader2,
   RefreshCw,
 } from "lucide-react";
@@ -59,7 +56,6 @@ export default function SellersPage() {
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const [stripeStatuses, setStripeStatuses] = useState<{ [key: string]: string }>({});
   async function fetchSellers() {
@@ -82,32 +78,6 @@ export default function SellersPage() {
   const setLoaderFor = (sellerId: string, state: boolean) =>
     setActionLoading((prev) => ({ ...prev, [sellerId]: state }));
 
-  const handleApprove = async (sellerId: string) => {
-    setLoaderFor(sellerId + "-approve", true);
-    try {
-      await api.post(`/api/admin/sellers/approve/${sellerId}`);
-      toast.success("Seller approved");
-      fetchSellers();
-    } catch {
-      toast.error("Failed to approve seller");
-    } finally {
-      setLoaderFor(sellerId + "-approve", false);
-    }
-  };
-
-  const handleReject = async (sellerId: string) => {
-    setLoaderFor(sellerId + "-reject", true);
-    try {
-      await api.post(`/api/admin/sellers/${sellerId}/reject`, {});
-      toast.success("Seller rejected");
-      fetchSellers();
-    } catch {
-      toast.error("Failed to reject seller");
-    } finally {
-      setLoaderFor(sellerId + "-reject", false);
-    }
-  };
-
   const handleStripeSync = async (sellerId: string) => {
     setLoaderFor(sellerId + "-stripe", true);
     try {
@@ -122,29 +92,7 @@ export default function SellersPage() {
     }
   };
 
-  const handleActivate = async (seller: Seller) => {
-    if ((seller.productCount ?? 0) < 1) {
-      toast.error("Seller must upload at least 1 product before activation.");
-      return;
-    }
-    setLoaderFor(seller.sellerId + "-activate", true);
-    try {
-      await api.post(`/api/admin/sellers/activate/${seller.sellerId}`, {});
-      toast.success("Seller activated");
-      fetchSellers();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to activate seller");
-    } finally {
-      setLoaderFor(seller.sellerId + "-activate", false);
-    }
-  };
-
   const filtered = sellers
-    .filter((seller) => {
-      if (tab === "pending") return seller.status === "PENDING";
-      if (tab === "rejected") return seller.status === "REJECTED";
-      return true;
-    })
     .filter((seller) => {
       if (!search.trim()) return true;
       const s = search.trim().toLowerCase();
@@ -189,27 +137,9 @@ export default function SellersPage() {
           </div>
         </CardContent>
       </Card>
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="all">All Sellers</TabsTrigger>
-          <TabsTrigger value="pending">
-            Pending
-            {sellers.filter((s) => s.status === "PENDING").length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-orange-500 text-white text-[10px] font-bold h-4 min-w-4 px-1">
-                {sellers.filter((s) => s.status === "PENDING").length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
-        </TabsList>
-        <TabsContent value={tab} className="w-full">
-          <Card>
+      <Card>
             <CardHeader>
-              <CardTitle>
-                {tab === "all" && `All Sellers (${filtered.length})`}
-                {tab === "pending" && `Pending Requests (${filtered.length})`}
-                {tab === "rejected" && `Rejected Sellers (${filtered.length})`}
-              </CardTitle>
+              <CardTitle>All Sellers ({filtered.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -321,58 +251,6 @@ export default function SellersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1 justify-end">
-                              {seller.status === "PENDING" && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    className="gap-1 text-xs h-7"
-                                    disabled={actionLoading[seller.sellerId + "-approve"]}
-                                    onClick={() => handleApprove(seller.sellerId)}
-                                  >
-                                    {actionLoading[seller.sellerId + "-approve"] ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Check className="h-3 w-3" />
-                                    )}
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="gap-1 text-xs h-7"
-                                    disabled={actionLoading[seller.sellerId + "-reject"]}
-                                    onClick={() => handleReject(seller.sellerId)}
-                                  >
-                                    {actionLoading[seller.sellerId + "-reject"] ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <X className="h-3 w-3" />
-                                    )}
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              {seller.status === "APPROVED" && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="gap-1 text-xs h-7"
-                                  disabled={
-                                    actionLoading[seller.sellerId + "-activate"] ||
-                                    (seller.productCount ?? 0) < 1
-                                  }
-                                  onClick={() => handleActivate(seller)}
-                                  title={(seller.productCount ?? 0) < 1 ? "Seller needs at least 1 product" : ""}
-                                >
-                                  {actionLoading[seller.sellerId + "-activate"] ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Flag className="h-3 w-3" />
-                                  )}
-                                  Activate
-                                </Button>
-                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -406,8 +284,6 @@ export default function SellersPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

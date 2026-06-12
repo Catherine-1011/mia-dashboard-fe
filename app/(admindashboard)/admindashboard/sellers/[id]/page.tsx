@@ -22,9 +22,21 @@ import {
   CreditCard,
   ShieldCheck,
   ShieldAlert,
+  Power,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -62,6 +74,9 @@ interface SellerData {
     accountNumber: string;
   };
   status: string;
+  isActive: boolean;
+  inactiveReason: string | null;
+  deactivatedAt: string | null;
   productCount: number;
   minimumProductsUploaded: boolean;
   onboardingStep: number;
@@ -110,6 +125,12 @@ export default function SingleSellerPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [showToggleConfirm, setShowToggleConfirm] = useState(false);
+  const [pendingToggleValue, setPendingToggleValue] = useState<boolean>(false);
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [toggleLoading, setToggleLoading] = useState(false);
+
   // Fetch seller details
   useEffect(() => {
     async function fetchSellerDetails() {
@@ -159,6 +180,55 @@ export default function SingleSellerPage() {
       router.push("/admindashboard/sellers");
     } catch (err) {
       toast.error("Failed to reject seller");
+    }
+  };
+
+  const handleToggleClick = (newValue: boolean) => {
+    setPendingToggleValue(newValue);
+    setDeactivateReason("");
+    setShowToggleConfirm(true);
+  };
+
+  const handleConfirmToggle = async () => {
+    setToggleLoading(true);
+    try {
+      const body: { isActive: boolean; reason?: string } = { isActive: pendingToggleValue };
+      if (!pendingToggleValue && deactivateReason.trim()) {
+        body.reason = deactivateReason.trim();
+      }
+      const res = await api.put(`/api/admin/sellers/${sellerId}/toggle-active`, body);
+
+      if (!res?.success) {
+        toast.error(res?.message || "Failed to update seller account status");
+        return;
+      }
+
+      // Use the server-returned seller data if available, otherwise patch locally
+      if (res?.data?.seller) {
+        setSeller((prev) => prev ? { ...prev, ...res.data.seller } : prev);
+      } else {
+        setSeller((prev) =>
+          prev
+            ? {
+                ...prev,
+                isActive: pendingToggleValue,
+                inactiveReason: pendingToggleValue ? null : deactivateReason.trim() || null,
+                deactivatedAt: pendingToggleValue ? null : new Date().toISOString(),
+              }
+            : prev
+        );
+      }
+
+      toast.success(
+        pendingToggleValue
+          ? "Seller account activated successfully"
+          : "Seller account deactivated successfully"
+      );
+      setShowToggleConfirm(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update seller account status");
+    } finally {
+      setToggleLoading(false);
     }
   };
 
@@ -244,6 +314,7 @@ export default function SingleSellerPage() {
   }
 
   const businessAddressObj = typeof seller.businessAddress === "string" ? JSON.parse(seller.businessAddress) : seller.businessAddress;
+  const sellerIsActive = seller.isActive !== false;
 
   return (
     <div className="space-y-6">
@@ -286,6 +357,85 @@ export default function SingleSellerPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Active / Inactive Toggle */}
+      <Card className={sellerIsActive ? "border-green-200" : "border-destructive/40"}>
+        <CardContent className="pt-6 pb-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-full p-2 ${sellerIsActive ? "bg-green-100" : "bg-destructive/10"}`}>
+                <Power className={`h-4 w-4 ${sellerIsActive ? "text-green-600" : "text-destructive"}`} />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">
+                  Account Operational Status
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {sellerIsActive
+                    ? "Seller can perform all operations (add products, request payouts, etc.)"
+                    : `Seller is deactivated — read-only access only${seller.inactiveReason ? `. Reason: ${seller.inactiveReason}` : ""}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className={`text-sm font-semibold ${sellerIsActive ? "text-green-600" : "text-destructive"}`}>
+                {sellerIsActive ? "Active" : "Inactive"}
+              </span>
+              <Switch
+                id="seller-active-toggle"
+                checked={sellerIsActive}
+                onCheckedChange={handleToggleClick}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Confirm Toggle Dialog */}
+      <Dialog open={showToggleConfirm} onOpenChange={setShowToggleConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingToggleValue ? "Activate Seller Account?" : "Deactivate Seller Account?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingToggleValue
+                ? `Are you sure you want to activate ${seller.businessName}? They will regain full access to all seller operations.`
+                : `Are you sure you want to deactivate ${seller.businessName}? All their active products will be deactivated and they will lose the ability to perform seller operations.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!pendingToggleValue && (
+            <div className="space-y-2 py-2">
+              <Label htmlFor="deactivate-reason">Reason for deactivation (optional)</Label>
+              <Textarea
+                id="deactivate-reason"
+                placeholder="e.g. Seller has not been active for 3 months"
+                value={deactivateReason}
+                onChange={(e) => setDeactivateReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowToggleConfirm(false)} disabled={toggleLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant={pendingToggleValue ? "default" : "destructive"}
+              onClick={handleConfirmToggle}
+              disabled={toggleLoading}
+            >
+              {toggleLoading
+                ? "Updating..."
+                : pendingToggleValue
+                ? "Yes, Activate"
+                : "Yes, Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Business Information */}
       <Card>

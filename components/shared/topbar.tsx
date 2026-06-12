@@ -368,11 +368,11 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 											{isLoading ? "..." : (user?.name ? user.name.split(" ").map(n => n[0]).join("") : "UN")}
 										</AvatarFallback>
 									</Avatar>
-									<div className="flex flex-col space-y-1">
-										<p className="text-sm font-medium leading-none">
+									<div className="flex flex-col space-y-1 min-w-0">
+										<p className="text-sm font-medium leading-none truncate">
 											{isLoading ? "Loading..." : (user?.name || "Unknown")}
 										</p>
-										<p className="text-xs leading-none text-muted-foreground">
+										<p className="text-xs leading-none text-muted-foreground truncate">
 											{isLoading ? "..." : (user?.email || "")}
 										</p>
 									</div>

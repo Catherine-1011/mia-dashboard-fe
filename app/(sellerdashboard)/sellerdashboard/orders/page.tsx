@@ -120,6 +120,20 @@ type Order = {
   paymentStatus: string;
   createdAt: string;
   updatedAt: string;
+  financialSummary?: {
+    productsSubtotal: number;
+    productsSubtotalExGST: number;
+    gstAmount: number;
+    gstPercentage: number;
+    shippingCost: number;
+    parentCouponCode?: string;
+    parentCouponDiscount?: number;
+    customerTotal: number;
+    platformCommissionRate: number;
+    platformCommission: number;
+    sellerProductEarning: number;
+    sellerPayout: number;
+  };
 };
 
 // ─── Status Update Modal ──────────────────────────────────────────────────────
@@ -1043,14 +1057,53 @@ export default function OrdersPage() {
         <Card className="border shadow-sm">
           <CardHeader className="pb-2 flex flex-row items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-semibold">Order Totals</CardTitle>
+            <CardTitle className="text-sm font-semibold">Financial Summary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            {subtotal !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Subtotal</span><span className="font-medium text-right">${subtotal}</span></div>}
-            {shipping !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Shipping</span><span className="font-medium text-right break-words">${typeof shipping === "object" ? JSON.stringify(shipping) : shipping}</span></div>}
-            {discount !== "" && Number(discount) > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Discount</span><span className="font-medium text-right text-green-600">-${discount}</span></div>}
-            {gst !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">GST</span><span className="font-medium text-right">${gst}</span></div>}
-            <div className="border-t pt-2 flex justify-between gap-4 font-bold text-base"><span className="shrink-0">My Order Total</span><span className="text-right">${total}</span></div>
+            {order.financialSummary ? (
+              <>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">Order Amount</span>
+                  <span className="font-medium text-right">${order.financialSummary.productsSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">Shipping</span>
+                  <span className="font-medium text-right">${order.financialSummary.shippingCost.toFixed(2)}</span>
+                </div>
+                {order.financialSummary.parentCouponDiscount != null && order.financialSummary.parentCouponDiscount > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground shrink-0">
+                      Discount{order.financialSummary.parentCouponCode ? ` (${order.financialSummary.parentCouponCode})` : ""}
+                    </span>
+                    <span className="font-medium text-right text-green-600">-${order.financialSummary.parentCouponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">GST ({order.financialSummary.gstPercentage}%)</span>
+                  <span className="font-medium text-right">${order.financialSummary.gstAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">Platform Commission ({order.financialSummary.platformCommissionRate}%)</span>
+                  <span className="font-medium text-right text-orange-600">-${order.financialSummary.platformCommission.toFixed(2)}</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">Customer Total</span>
+                  <span className="font-semibold text-right">${order.financialSummary.customerTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between gap-4 font-bold text-base text-green-700 dark:text-green-400">
+                  <span className="shrink-0">Your Payout</span>
+                  <span className="text-right">${order.financialSummary.sellerPayout.toFixed(2)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {subtotal !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Subtotal</span><span className="font-medium text-right">${subtotal}</span></div>}
+                {shipping !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Shipping</span><span className="font-medium text-right break-words">${typeof shipping === "object" ? JSON.stringify(shipping) : shipping}</span></div>}
+                {discount !== "" && Number(discount) > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Discount</span><span className="font-medium text-right text-green-600">-${discount}</span></div>}
+                {gst !== "" && <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">GST</span><span className="font-medium text-right">${gst}</span></div>}
+                <div className="border-t pt-2 flex justify-between gap-4 font-bold text-base"><span className="shrink-0">My Order Total</span><span className="text-right">${total}</span></div>
+              </>
+            )}
             {order.items && order.items.length > 0 && (
               <div className="border-t pt-2 space-y-1">
                 <p className="text-muted-foreground font-medium mb-1">Items</p>

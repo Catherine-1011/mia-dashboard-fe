@@ -38,6 +38,21 @@ type OrderItem = {
   variantAttributes?: Record<string, string> | null;
 };
 
+type FinancialSummary = {
+  productsSubtotal: number;
+  productsSubtotalExGST: number;
+  gstAmount: number;
+  gstPercentage: number;
+  shippingCost: number;
+  parentCouponCode?: string;
+  parentCouponDiscount?: number;
+  customerTotal: number;
+  platformCommissionRate: number;
+  platformCommission: number;
+  sellerProductEarning: number;
+  sellerPayout: number;
+};
+
 type SubOrderInfo = {
   subOrderId: string;
   subDisplayId?: string | null;
@@ -52,6 +67,7 @@ type SubOrderInfo = {
   subtotal?: string | null;
   trackingNumber?: string | null;
   estimatedDelivery?: string | null;
+  financialSummary?: FinancialSummary;
   items: {
     id: string;
     quantity: number;
@@ -95,6 +111,7 @@ type Order = {
   originalTotal?: string | null;
   paymentStatus?: string | null;
   orderSummary?: any;
+  financialSummary?: FinancialSummary;
 };
 
 // ── Status Update Modal ────────────────────────────────────────────────────────
@@ -337,6 +354,7 @@ function mapDetailedToOrder(d: any): Order {
           subtotal: sub.subtotal ?? null,
           trackingNumber: sub.trackingNumber ?? null,
           estimatedDelivery: sub.estimatedDelivery ?? null,
+          financialSummary: sub.financialSummary ?? null,
           items: (sub.items ?? []).map((item: any) => ({
             id: item.id,
             quantity: item.quantity,
@@ -389,6 +407,7 @@ function mapDetailedToOrder(d: any): Order {
     couponCode: d.couponCode ?? null,
     originalTotal: d.originalTotal ?? null,
     orderSummary: d.orderSummary ?? null,
+    financialSummary: d.financialSummary ?? null,
     // seller for direct orders
     sellerName: d.sellerName ?? d.seller?.name ?? null,
     seller: d.seller ?? null,
@@ -745,61 +764,94 @@ function OrderDetailContent() {
           )}
         </Card>
 
-        {/* Order Totals */}
+        {/* Order Totals / Financial Summary */}
         <Card>
           <div className="flex items-center gap-2 px-4 py-2.5 bg-muted border-b rounded-t-lg">
             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order Summary</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {order.financialSummary ? "Financial Summary" : "Order Summary"}
+            </span>
           </div>
           <div className="px-4 py-3 space-y-2 text-sm">
-            {/* Subtotal — from orderSummary, top-level API, or computed from items */}
-            {resolvedSubtotal != null && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal{computedSubtotal != null ? " (items)" : ""}</span>
-                <span>${parseFloat(resolvedSubtotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            {/* Shipping — from orderSummary only */}
-            {resolvedShipping != null && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Shipping{sm.name ? ` · ${sm.name}` : ""}
-                  {sm.estimatedDays && <span className="text-xs block text-muted-foreground/70">{sm.estimatedDays}</span>}
-                </span>
-                <span>${parseFloat(resolvedShipping).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            {/* Discount */}
-            {resolvedDiscount != null && Number(resolvedDiscount) !== 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Discount{resolvedCoupon ? ` (${resolvedCoupon})` : ""}</span>
-                <span>− ${parseFloat(resolvedDiscount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            {/* GST — from orderSummary only */}
-            {resolvedGst != null && Number(resolvedGst) > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">GST{resolvedGstPct ? ` (${resolvedGstPct}%)` : ""}</span>
-                <span>${parseFloat(resolvedGst).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            {/* Original total (before discount) */}
-            {resolvedOriginal != null && Number(resolvedOriginal) > 0 && Number(resolvedOriginal) !== Number(order.totalAmount) && (
-              <div className="flex justify-between text-muted-foreground line-through text-xs">
-                <span>Original Total</span>
-                <span>${parseFloat(resolvedOriginal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            <div className="border-t pt-2 mt-1 flex justify-between font-bold text-base">
-              <span>Grand Total</span>
-              <span>${parseFloat(order.totalAmount ?? "0").toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            {/* Coupon applied with no numeric discount */}
-            {resolvedCoupon && (resolvedDiscount == null || Number(resolvedDiscount) === 0) && (
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Coupon applied</span>
-                <span className="font-mono">{resolvedCoupon}</span>
-              </div>
+            {order.financialSummary ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Order Amount</span>
+                  <span>${order.financialSummary.productsSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>${order.financialSummary.shippingCost.toFixed(2)}</span>
+                </div>
+                {order.financialSummary.parentCouponDiscount != null && order.financialSummary.parentCouponDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount{order.financialSummary.parentCouponCode ? ` (${order.financialSummary.parentCouponCode})` : ""}</span>
+                    <span>−${order.financialSummary.parentCouponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GST ({order.financialSummary.gstPercentage}%)</span>
+                  <span>${order.financialSummary.gstAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-orange-600">
+                  <span>Platform Commission ({order.financialSummary.platformCommissionRate}%)</span>
+                  <span>−${order.financialSummary.platformCommission.toFixed(2)}</span>
+                </div>
+                <div className="border-t pt-2 mt-1 flex justify-between font-semibold">
+                  <span>Customer Total</span>
+                  <span>${order.financialSummary.customerTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base text-green-700 dark:text-green-400">
+                  <span>Seller Payout</span>
+                  <span>${order.financialSummary.sellerPayout.toFixed(2)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {resolvedSubtotal != null && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal{computedSubtotal != null ? " (items)" : ""}</span>
+                    <span>${parseFloat(resolvedSubtotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {resolvedShipping != null && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Shipping{sm.name ? ` · ${sm.name}` : ""}
+                      {sm.estimatedDays && <span className="text-xs block text-muted-foreground/70">{sm.estimatedDays}</span>}
+                    </span>
+                    <span>${parseFloat(resolvedShipping).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {resolvedDiscount != null && Number(resolvedDiscount) !== 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount{resolvedCoupon ? ` (${resolvedCoupon})` : ""}</span>
+                    <span>−${parseFloat(resolvedDiscount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {resolvedGst != null && Number(resolvedGst) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">GST{resolvedGstPct ? ` (${resolvedGstPct}%)` : ""}</span>
+                    <span>${parseFloat(resolvedGst).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {resolvedOriginal != null && Number(resolvedOriginal) > 0 && Number(resolvedOriginal) !== Number(order.totalAmount) && (
+                  <div className="flex justify-between text-muted-foreground line-through text-xs">
+                    <span>Original Total</span>
+                    <span>${parseFloat(resolvedOriginal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 mt-1 flex justify-between font-bold text-base">
+                  <span>Grand Total</span>
+                  <span>${parseFloat(order.totalAmount ?? "0").toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                {resolvedCoupon && (resolvedDiscount == null || Number(resolvedDiscount) === 0) && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Coupon applied</span>
+                    <span className="font-mono">{resolvedCoupon}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Card>
@@ -952,6 +1004,47 @@ function OrderDetailContent() {
                       Est. {fmtDate(sub.estimatedDelivery)}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* Financial Summary for this sub-order */}
+              {sub.financialSummary && (
+                <div className="border-t bg-muted/10 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <DollarSign className="h-3 w-3" /> Financial Summary
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-1.5 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Order Amount</p>
+                      <p className="font-semibold">${sub.financialSummary.productsSubtotal.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Shipping</p>
+                      <p className="font-semibold">${sub.financialSummary.shippingCost.toFixed(2)}</p>
+                    </div>
+                    {sub.financialSummary.parentCouponDiscount != null && sub.financialSummary.parentCouponDiscount > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Discount{sub.financialSummary.parentCouponCode ? ` (${sub.financialSummary.parentCouponCode})` : ""}</p>
+                        <p className="font-semibold text-green-600">−${sub.financialSummary.parentCouponDiscount.toFixed(2)}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-muted-foreground">GST ({sub.financialSummary.gstPercentage}%)</p>
+                      <p className="font-semibold">${sub.financialSummary.gstAmount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Platform Commission ({sub.financialSummary.platformCommissionRate}%)</p>
+                      <p className="font-semibold text-orange-600">−${sub.financialSummary.platformCommission.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Customer Total</p>
+                      <p className="font-semibold">${sub.financialSummary.customerTotal.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Seller Payout</p>
+                      <p className="font-bold text-green-700 dark:text-green-400">${sub.financialSummary.sellerPayout.toFixed(2)}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </Card>

@@ -1973,7 +1973,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -2079,6 +2079,20 @@ type Order = {
   isSubOrder: boolean;
   sellerSpecific: boolean;
   isGuest?: string | boolean | null;
+  financialSummary?: {
+    productsSubtotal: number;
+    productsSubtotalExGST: number;
+    gstAmount: number;
+    gstPercentage: number;
+    shippingCost: number;
+    parentCouponCode?: string;
+    parentCouponDiscount?: number;
+    customerTotal: number;
+    platformCommissionRate: number;
+    platformCommission: number;
+    sellerProductEarning: number;
+    sellerPayout: number;
+  };
 };
 
 type OrdersResponse = {
@@ -2132,6 +2146,20 @@ type DetailedSubOrder = {
   itemCount: number;
   createdAt: string;
   updatedAt: string;
+  financialSummary?: {
+    productsSubtotal: number;
+    productsSubtotalExGST: number;
+    gstAmount: number;
+    gstPercentage: number;
+    shippingCost: number;
+    parentCouponCode?: string;
+    parentCouponDiscount?: number;
+    customerTotal: number;
+    platformCommissionRate: number;
+    platformCommission: number;
+    sellerProductEarning: number;
+    sellerPayout: number;
+  };
 };
 
 type DetailedOrder = {
@@ -2192,6 +2220,20 @@ type DetailedOrder = {
   trackingNumber?: string | null;
   status?: string | null;
   isGuest?: string | boolean | null;
+  financialSummary?: {
+    productsSubtotal: number;
+    productsSubtotalExGST: number;
+    gstAmount: number;
+    gstPercentage: number;
+    shippingCost: number;
+    parentCouponCode?: string;
+    parentCouponDiscount?: number;
+    customerTotal: number;
+    platformCommissionRate: number;
+    platformCommission: number;
+    sellerProductEarning: number;
+    sellerPayout: number;
+  };
 };
 
 type DetailedOrdersResponse = {
@@ -2655,6 +2697,8 @@ export default function AdminOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isSellerDropdownOpen, setIsSellerDropdownOpen] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [expandedAllOrderId, setExpandedAllOrderId] = useState<string | null>(null);
   const sellerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -3269,9 +3313,11 @@ export default function AdminOrdersPage() {
                       const firstItemTitle = order.subOrders && order.subOrders.length > 0
                         ? order.subOrders[0]?.items?.[0]?.product?.title
                         : order.items?.[0]?.product?.title;
+                      const isAllExpanded = expandedAllOrderId === order.id;
+                      const hasFinancial = order.financialSummary || (order.subOrders && order.subOrders.some(s => s.financialSummary));
                       return (
+                        <Fragment key={order.id}>
                         <TableRow
-                          key={order.id}
                           ref={order.id === activeHighlight ? (highlightRef as React.RefObject<HTMLTableRowElement>) : undefined}
                           className={order.id === activeHighlight ? "bg-primary/5 ring-1 ring-primary" : ""}
                         >
@@ -3320,16 +3366,84 @@ export default function AdminOrdersPage() {
                             </p>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 h-8 text-xs"
-                              onClick={() => router.push(`/admindashboard/orders/${order.id}`)}
-                            >
-                              <Eye className="h-3.5 w-3.5" /> View
-                            </Button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 h-8 text-xs"
+                                onClick={() => router.push(`/admindashboard/orders/${order.id}`)}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> View
+                              </Button>
+                              {hasFinancial && (
+                                <Button
+                                  variant={isAllExpanded ? "default" : "outline"}
+                                  size="sm"
+                                  className="gap-1 h-8 text-xs"
+                                  onClick={() => setExpandedAllOrderId(isAllExpanded ? null : order.id)}
+                                  title="Financial Summary"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" /> Summary
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
+                        {isAllExpanded && (
+                          <TableRow className="bg-muted/10">
+                            <TableCell colSpan={9} className="p-0 border-t-0">
+                              <div className="m-3 rounded-lg border border-l-4 border-l-primary/40 bg-background shadow-sm">
+                                {/* Single-seller or parent-level summary */}
+                                {order.financialSummary && (
+                                  <div className="p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Order Financial Summary</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-2 text-xs">
+                                      <div><p className="text-muted-foreground">Order Amount</p><p className="font-semibold">${order.financialSummary.productsSubtotal.toFixed(2)}</p></div>
+                                      <div><p className="text-muted-foreground">Shipping</p><p className="font-semibold">${order.financialSummary.shippingCost.toFixed(2)}</p></div>
+                                      {order.financialSummary.parentCouponDiscount != null && order.financialSummary.parentCouponDiscount > 0 && (
+                                        <div><p className="text-muted-foreground">Discount{order.financialSummary.parentCouponCode ? ` (${order.financialSummary.parentCouponCode})` : ""}</p><p className="font-semibold text-green-600">−${order.financialSummary.parentCouponDiscount.toFixed(2)}</p></div>
+                                      )}
+                                      <div><p className="text-muted-foreground">GST ({order.financialSummary.gstPercentage}%)</p><p className="font-semibold">${order.financialSummary.gstAmount.toFixed(2)}</p></div>
+                                      <div><p className="text-muted-foreground">Platform Commission ({order.financialSummary.platformCommissionRate}%)</p><p className="font-semibold text-orange-600">−${order.financialSummary.platformCommission.toFixed(2)}</p></div>
+                                      <div><p className="text-muted-foreground">Customer Total</p><p className="font-semibold">${order.financialSummary.customerTotal.toFixed(2)}</p></div>
+                                      <div><p className="text-muted-foreground">Seller Payout</p><p className="font-bold text-green-700 dark:text-green-400">${order.financialSummary.sellerPayout.toFixed(2)}</p></div>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Multi-seller: per-sub-order summaries */}
+                                {order.subOrders && order.subOrders.some(s => s.financialSummary) && (
+                                  <div className={order.financialSummary ? "border-t p-4" : "p-4"}>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-Seller Financial Summary</p>
+                                    <div className="space-y-4">
+                                      {order.subOrders.filter(s => s.financialSummary).map((sub) => (
+                                        <div key={sub.subOrderId} className="rounded-md border bg-muted/20 p-3">
+                                          <p className="text-xs font-semibold mb-2 text-primary/80">
+                                            {sub.subDisplayId ?? sub.subOrderId.slice(-8).toUpperCase()} · {sub.sellerName || sub.seller?.storeName || "—"}
+                                          </p>
+                                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-1.5 text-xs">
+                                            <div><p className="text-muted-foreground">Order Amount</p><p className="font-semibold">${sub.financialSummary!.productsSubtotal.toFixed(2)}</p></div>
+                                            <div><p className="text-muted-foreground">Shipping</p><p className="font-semibold">${sub.financialSummary!.shippingCost.toFixed(2)}</p></div>
+                                            {sub.financialSummary!.parentCouponDiscount != null && sub.financialSummary!.parentCouponDiscount > 0 && (
+                                              <div><p className="text-muted-foreground">Discount{sub.financialSummary!.parentCouponCode ? ` (${sub.financialSummary!.parentCouponCode})` : ""}</p><p className="font-semibold text-green-600">−${sub.financialSummary!.parentCouponDiscount.toFixed(2)}</p></div>
+                                            )}
+                                            <div><p className="text-muted-foreground">GST ({sub.financialSummary!.gstPercentage}%)</p><p className="font-semibold">${sub.financialSummary!.gstAmount.toFixed(2)}</p></div>
+                                            <div><p className="text-muted-foreground">Platform Commission ({sub.financialSummary!.platformCommissionRate}%)</p><p className="font-semibold text-orange-600">−${sub.financialSummary!.platformCommission.toFixed(2)}</p></div>
+                                            <div><p className="text-muted-foreground">Customer Total</p><p className="font-semibold">${sub.financialSummary!.customerTotal.toFixed(2)}</p></div>
+                                            <div><p className="text-muted-foreground">Seller Payout</p><p className="font-bold text-green-700 dark:text-green-400">${sub.financialSummary!.sellerPayout.toFixed(2)}</p></div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {!order.financialSummary && (!order.subOrders || !order.subOrders.some(s => s.financialSummary)) && (
+                                  <div className="p-4 text-sm text-muted-foreground">No financial summary available for this order.</div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </TableBody>
@@ -3552,8 +3666,10 @@ export default function AdminOrdersPage() {
                     const orderId = order.isSubOrder
                       ? (order.subDisplayId ?? order.displaySubId ?? `#${order.subOrderId?.slice(-6).toUpperCase() ?? order.id.slice(-6).toUpperCase()}`)
                       : (order.displayId ?? `#${order.id.slice(-6).toUpperCase()}`);
+                    const isExpanded = expandedOrderId === order.id;
                     return (
-                      <TableRow key={order.id} className={cn(isBulkSelectMode && selectedOrderIds.has(order.id) && "bg-primary/5")}>
+                      <Fragment key={order.id}>
+                      <TableRow className={cn(isBulkSelectMode && selectedOrderIds.has(order.id) && "bg-primary/5")}>
                         {isBulkSelectMode && (
                           <TableCell>
                             {!isTerminalStatus(order.status) && (
@@ -3652,9 +3768,66 @@ export default function AdminOrdersPage() {
                               {downloadingInvoiceId === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                               Invoice
                             </Button>
+                            <Button
+                              variant={isExpanded ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                              title="Financial Summary"
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              Summary
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
+                      {isExpanded && (
+                        <TableRow className="bg-muted/10">
+                          <TableCell colSpan={isBulkSelectMode ? 10 : 9} className="p-0 border-t-0">
+                            <div className="m-3 rounded-lg border border-l-4 border-l-primary/40 bg-background shadow-sm">
+                              {order.financialSummary ? (
+                                <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">Order Amount</p>
+                                    <p className="text-sm font-semibold">${order.financialSummary.productsSubtotal.toFixed(2)}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">Shipping</p>
+                                    <p className="text-sm font-semibold">${order.financialSummary.shippingCost.toFixed(2)}</p>
+                                  </div>
+                                  {order.financialSummary.parentCouponDiscount != null && order.financialSummary.parentCouponDiscount > 0 && (
+                                    <div className="space-y-0.5">
+                                      <p className="text-xs text-muted-foreground">
+                                        Discount{order.financialSummary.parentCouponCode ? ` (${order.financialSummary.parentCouponCode})` : ""}
+                                      </p>
+                                      <p className="text-sm font-semibold text-green-600">-${order.financialSummary.parentCouponDiscount.toFixed(2)}</p>
+                                    </div>
+                                  )}
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">GST ({order.financialSummary.gstPercentage}%)</p>
+                                    <p className="text-sm font-semibold">${order.financialSummary.gstAmount.toFixed(2)}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">Platform Commission ({order.financialSummary.platformCommissionRate}%)</p>
+                                    <p className="text-sm font-semibold text-orange-600">-${order.financialSummary.platformCommission.toFixed(2)}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">Customer Total</p>
+                                    <p className="text-sm font-semibold">${order.financialSummary.customerTotal.toFixed(2)}</p>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">Seller Payout</p>
+                                    <p className="text-sm font-bold text-green-700 dark:text-green-400">${order.financialSummary.sellerPayout.toFixed(2)}</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-4 text-sm text-muted-foreground">No financial summary available for this order.</div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </TableBody>

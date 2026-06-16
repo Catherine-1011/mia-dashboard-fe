@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -30,6 +30,7 @@ import {
   CreditCard,
   FileText,
   Download,
+  Coins,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +47,10 @@ interface ExecutiveSummary {
   grossRevenue: number;
   netRevenue: number;
   gstCollected: number;
+  totalFeesCollected?: number;
+  totalPlatformCommission?: number;
+  platformCommission?: number;
+  platformCommision?: number;
 }
 
 interface Trend {
@@ -70,6 +75,11 @@ interface PaymentMethod {
   gstAmount: number;
   grossAmount: number;
   fees: number;
+  platformCommission?: number;
+  platformCommissionAmount?: number;
+  platformCommision?: number;
+  platformCommisionAmount?: number;
+  totalFeesCollected?: number;
   netReceived: number;
 }
 
@@ -89,6 +99,12 @@ interface Transaction {
   gstRate: number;
   gstAmount: number;
   totalAmount: number;
+  platformCommission?: number;
+  platformCommissionAmount?: number;
+  platformCommision?: number;
+  platformCommisionAmount?: number;
+  commissionAmount?: number;
+  fees?: number;
   status: string;
   ref: string;
 }
@@ -127,6 +143,44 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   REFUNDED: "destructive",
 };
 
+const toNumber = (value: unknown) => {
+  const numberValue = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getPlatformCommission = (row: Partial<Transaction | PaymentMethod>) =>
+  toNumber(
+    row.platformCommission ??
+      row.platformCommissionAmount ??
+      row.platformCommision ??
+      row.platformCommisionAmount ??
+      ("commissionAmount" in row ? row.commissionAmount : undefined) ??
+      ("totalFeesCollected" in row ? row.totalFeesCollected : undefined)
+  );
+
+const getTotalFeesCollected = (report: GstReport) => {
+  const summary = report.executiveSummary;
+  const summaryTotal = toNumber(
+    summary.totalFeesCollected ??
+      summary.totalPlatformCommission ??
+      summary.platformCommission ??
+      summary.platformCommision
+  );
+
+  if (summaryTotal > 0) return summaryTotal;
+
+  const txTotal = report.transactions.reduce(
+    (sum, tx) => sum + getPlatformCommission(tx),
+    0
+  );
+  if (txTotal > 0) return txTotal;
+
+  return report.paymentMethods.reduce(
+    (sum, pm) => sum + getPlatformCommission(pm),
+    0
+  );
+};
+
 // ─── Skeleton loaders ──────────────────────────────────────────────────────
 const SummaryCardSkeleton = () => (
   <Card>
@@ -160,6 +214,14 @@ const ReportPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [txPage, setTxPage] = useState(1);
   const TX_PAGE_SIZE = 20;
+  const totalFeesCollected = report ? getTotalFeesCollected(report) : 0;
+  const sortedTransactions = useMemo(
+    () =>
+      [...(report?.transactions ?? [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+    [report?.transactions]
+  );
 
   const downloadCSV = useCallback(() => {
     if (!report) return;
@@ -176,6 +238,7 @@ const ReportPage = () => {
     sections.push(`Gross Revenue,${report.executiveSummary.grossRevenue}`);
     sections.push(`Net Revenue,${report.executiveSummary.netRevenue}`);
     sections.push(`GST Collected,${report.executiveSummary.gstCollected}`);
+    sections.push(`Total Fees Collected,${getTotalFeesCollected(report)}`);
     sections.push(`Growth %,${report.trend.growthPercentage}`);
     sections.push("");
 
@@ -189,9 +252,9 @@ const ReportPage = () => {
 
     // Payment Methods
     sections.push("PAYMENT METHOD RECONCILIATION");
-    sections.push("Method,Transactions,Net Amount,GST,Gross Amount,Fees,Net Received");
+    sections.push("Method,Transactions,Net Amount,GST,Gross Amount,Fees,Platform Commission,Net Received");
     report.paymentMethods.forEach((pm) => {
-      sections.push(`${pm.method},${pm.transactions},${pm.netAmount},${pm.gstAmount},${pm.grossAmount},${pm.fees},${pm.netReceived}`);
+      sections.push(`${pm.method},${pm.transactions},${pm.netAmount},${pm.gstAmount},${pm.grossAmount},${pm.fees},${getPlatformCommission(pm)},${pm.netReceived}`);
     });
     sections.push("");
 
@@ -205,10 +268,10 @@ const ReportPage = () => {
 
     // Transactions
     sections.push("TRANSACTIONS");
-    sections.push("Order ID,Date,Customer,Payment Method,Net Amount,GST Rate,GST Amount,Total Amount,Status,Reference");
-    report.transactions.forEach((tx) => {
+    sections.push("Order ID,Date,Customer,Payment Method,Net Amount,GST Rate,GST Amount,Total Amount,Platform Commission,Status,Reference");
+    sortedTransactions.forEach((tx) => {
       const date = new Date(tx.date).toLocaleDateString("en-AU");
-      sections.push(`${tx.orderId},${date},"${tx.customerName}",${tx.paymentMethod},${tx.netAmount},${tx.gstRate}%,${tx.gstAmount},${tx.totalAmount},${tx.status},${tx.ref}`);
+      sections.push(`${tx.orderId},${date},"${tx.customerName}",${tx.paymentMethod},${tx.netAmount},${tx.gstRate}%,${tx.gstAmount},${tx.totalAmount},${getPlatformCommission(tx)},${tx.status},${tx.ref}`);
     });
 
     const blob = new Blob([sections.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -219,7 +282,7 @@ const ReportPage = () => {
     link.click();
     URL.revokeObjectURL(url);
     toast.success(`Downloaded ${filename}`);
-  }, [report]);
+  }, [report, sortedTransactions]);
 
   const fetchReport = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -324,9 +387,9 @@ const ReportPage = () => {
       </div>
 
       {/* ── Executive Summary Cards ─────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <SummaryCardSkeleton key={i} />)
+          Array.from({ length: 5 }).map((_, i) => <SummaryCardSkeleton key={i} />)
         ) : report ? (
           <>
             <SummaryCard
@@ -358,6 +421,13 @@ const ReportPage = () => {
               icon={FileText}
               iconClass="text-orange-600"
               bgClass="bg-orange-50"
+            />
+            <SummaryCard
+              title="Total Fees Collected"
+              value={formatCurrency(totalFeesCollected)}
+              icon={Coins}
+              iconClass="text-teal-600"
+              bgClass="bg-teal-50"
             />
           </>
         ) : null}
@@ -423,7 +493,7 @@ const ReportPage = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <TableSkeleton rows={3} cols={7} />
+            <TableSkeleton rows={3} cols={8} />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -435,6 +505,7 @@ const ReportPage = () => {
                     <TableHead className="text-right">GST</TableHead>
                     <TableHead className="text-right">Gross Amount</TableHead>
                     <TableHead className="text-right">Fees</TableHead>
+                    <TableHead className="text-right">Platform Commission</TableHead>
                     <TableHead className="text-right">Net Received</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -448,12 +519,13 @@ const ReportPage = () => {
                         <TableCell className="text-right text-orange-600">{formatCurrency(pm.gstAmount)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(pm.grossAmount)}</TableCell>
                         <TableCell className="text-right text-destructive">{formatCurrency(pm.fees)}</TableCell>
+                        <TableCell className="text-right text-teal-600">{formatCurrency(getPlatformCommission(pm))}</TableCell>
                         <TableCell className="text-right font-semibold text-green-600">{formatCurrency(pm.netReceived)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No data for this period
                       </TableCell>
                     </TableRow>
@@ -521,14 +593,14 @@ const ReportPage = () => {
             Transactions
             {report && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({report.transactions.length.toLocaleString()} records)
+                ({sortedTransactions.length.toLocaleString()} records)
               </span>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <TableSkeleton rows={8} cols={7} />
+            <TableSkeleton rows={8} cols={9} />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -541,12 +613,13 @@ const ReportPage = () => {
                     <TableHead className="text-right">Net</TableHead>
                     <TableHead className="text-right">GST</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Platform Commission</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report?.transactions.length ? (
-                    report.transactions.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE).map((tx) => (
+                  {sortedTransactions.length ? (
+                    sortedTransactions.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE).map((tx) => (
                       <TableRow key={tx.orderId}>
                         <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
                         <TableCell className="text-sm">{formatDate(tx.date)}</TableCell>
@@ -555,6 +628,7 @@ const ReportPage = () => {
                         <TableCell className="text-right">{formatCurrency(tx.netAmount)}</TableCell>
                         <TableCell className="text-right text-orange-600">{formatCurrency(tx.gstAmount)}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(tx.totalAmount)}</TableCell>
+                        <TableCell className="text-right text-teal-600">{formatCurrency(getPlatformCommission(tx))}</TableCell>
                         <TableCell>
                           <Badge variant={STATUS_VARIANT[tx.status] ?? "secondary"}>
                             {tx.status}
@@ -564,7 +638,7 @@ const ReportPage = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         No transactions for this period
                       </TableCell>
                     </TableRow>
@@ -574,10 +648,10 @@ const ReportPage = () => {
             </div>
           )}
           {/* Pagination */}
-          {report && report.transactions.length > TX_PAGE_SIZE && (
+          {report && sortedTransactions.length > TX_PAGE_SIZE && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <p className="text-sm text-muted-foreground">
-                Showing {((txPage - 1) * TX_PAGE_SIZE) + 1}–{Math.min(txPage * TX_PAGE_SIZE, report.transactions.length)} of {report.transactions.length.toLocaleString()} transactions
+                Showing {((txPage - 1) * TX_PAGE_SIZE) + 1}–{Math.min(txPage * TX_PAGE_SIZE, sortedTransactions.length)} of {sortedTransactions.length.toLocaleString()} transactions
               </p>
               <div className="flex items-center gap-1">
                 <Button
@@ -596,8 +670,8 @@ const ReportPage = () => {
                 >
                   ‹
                 </Button>
-                {Array.from({ length: Math.ceil(report.transactions.length / TX_PAGE_SIZE) }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === Math.ceil(report.transactions.length / TX_PAGE_SIZE) || Math.abs(p - txPage) <= 2)
+                {Array.from({ length: Math.ceil(sortedTransactions.length / TX_PAGE_SIZE) }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === Math.ceil(sortedTransactions.length / TX_PAGE_SIZE) || Math.abs(p - txPage) <= 2)
                   .reduce<(number | "…")[]>((acc, p, idx, arr) => {
                     if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
                     acc.push(p);
@@ -622,15 +696,15 @@ const ReportPage = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setTxPage((p) => p + 1)}
-                  disabled={txPage === Math.ceil(report.transactions.length / TX_PAGE_SIZE)}
+                  disabled={txPage === Math.ceil(sortedTransactions.length / TX_PAGE_SIZE)}
                 >
                   ›
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setTxPage(Math.ceil(report.transactions.length / TX_PAGE_SIZE))}
-                  disabled={txPage === Math.ceil(report.transactions.length / TX_PAGE_SIZE)}
+                  onClick={() => setTxPage(Math.ceil(sortedTransactions.length / TX_PAGE_SIZE))}
+                  disabled={txPage === Math.ceil(sortedTransactions.length / TX_PAGE_SIZE)}
                 >
                   »
                 </Button>

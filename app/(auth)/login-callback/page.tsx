@@ -6,7 +6,7 @@ import { Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 type Stage = "exchanging" | "success";
 

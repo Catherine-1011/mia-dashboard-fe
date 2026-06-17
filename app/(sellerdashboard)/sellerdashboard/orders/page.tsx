@@ -25,7 +25,7 @@ import {
   isTerminalStatus,
 } from "@/lib/orderStatusRules";
 
-const BASE_URL = "https://backend.madeinarnhemland.com.au";
+const BASE_URL = "http://127.0.0.1:5000";
 
 const getFriendlyTrackingErrorMessage = (message: string) => {
   if (/tracking number/i.test(message) && /(already used|already assigned|sub-order)/i.test(message)) {

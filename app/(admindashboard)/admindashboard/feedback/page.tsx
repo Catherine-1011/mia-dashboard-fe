@@ -185,7 +185,7 @@ export default function FeedbackPage() {
     setExportingCsv(true);
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "https://backend.madeinarnhemland.com.au";
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5000";
       const res = await fetch(`${baseUrl}/api/newsletter/export`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

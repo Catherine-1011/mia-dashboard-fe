@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ProductAuditHistory } from "@/components/shared/product-audit-history";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 const getAuthToken = () =>
   typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;

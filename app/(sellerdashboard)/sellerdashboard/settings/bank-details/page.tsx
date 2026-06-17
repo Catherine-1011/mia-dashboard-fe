@@ -178,7 +178,7 @@ export default function BankDetailsSettingsPage() {
       // Use raw fetch (not api.post) so a 401 wrong-password response
       // doesn't trigger the global logout interceptor in api.ts.
       const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;
-      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
+      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
       const res = await fetch(`${BASE_URL}/api/sellers/bank-details/change-request`, {
         method: "POST",
         headers: {

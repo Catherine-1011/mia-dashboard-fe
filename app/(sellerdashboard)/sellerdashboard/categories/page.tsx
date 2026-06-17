@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { Plus, Loader2, Clock, CheckCircle2, Package, Search, AlertCircle, RefreshCcw, Eye, Trash2, X } from "lucide-react";
 
 // --- CONFIGURATION ---
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 // --- HELPER: Get Auth Token ---
 const getAuthToken = () => {

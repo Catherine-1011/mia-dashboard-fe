@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Bell, ShoppingCart, Package, UserCheck, AlertCircle, User, Settings, LogOut, CheckCircle2, AlertTriangle, XCircle, Star, Pencil, Banknote } from "lucide-react";
+import { Bell, ShoppingCart, Package, UserCheck, AlertCircle, User, Settings, LogOut, CheckCircle2, AlertTriangle, XCircle, Star, Pencil, Banknote, Menu } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { decodeJWT } from "@/lib/jwt";
@@ -72,7 +72,7 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 	}
 };
 
-	export default function Topbar() {
+	export default function Topbar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
 		const [user, setUser] = useState<{ name: string; email: string; profileImage?: string } | null>(null);
 		const [isLoading, setIsLoading] = useState(true);
 		const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -248,7 +248,21 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 		};
 
 		return (
-			<div className="flex h-16 items-center justify-end border-b px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+			<div className="flex h-16 items-center justify-between border-b px-4 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+				{/* Left: hamburger for mobile */}
+				<div>
+					{onMenuClick && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="md:hidden h-9 w-9"
+							onClick={onMenuClick}
+							aria-label="Open menu"
+						>
+							<Menu className="h-5 w-5" />
+						</Button>
+					)}
+				</div>
 
 				{/* Right Section */}
 				<div className="flex items-center gap-3">
@@ -402,6 +416,7 @@ const getNotificationIcon = (n: Pick<Notification, "type" | "metadata" | "relate
 			</div>
 		);
 	}
+
 // ...existing code ends here
 
 // (Removed duplicate Topbar function declaration)

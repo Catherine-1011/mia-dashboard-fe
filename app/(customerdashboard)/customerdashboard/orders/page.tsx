@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { isTerminalStatus, getStatusBadgeVariant } from "@/lib/orderStatusRules";
 import { ImagePlus, Trash2 } from "lucide-react";
 
-const BASE_URL = "http://127.0.0.1:5000";
+const BASE_URL = "https://backend.madeinarnhemland.com.au";
 
 function getAuthHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("alpa_token") : null;

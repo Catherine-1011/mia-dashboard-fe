@@ -23,7 +23,7 @@ import { ProductAuditHistory } from "@/components/shared/product-audit-history";
 import { ImageCropModal } from "@/components/shared/image-crop-modal";
 
 // --- CONFIGURATION ---
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
 
 // --- HELPER: Get Auth Token ---
 const getAuthToken = () => {

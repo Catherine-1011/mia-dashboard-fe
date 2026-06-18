@@ -15,7 +15,7 @@
 //       setLoading(true);
 //       try {
 //         const token = typeof window !== "undefined" ? (localStorage.getItem("alpa_token") || localStorage.getItem("auth_token")) : null;
-//         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000"}/api/users/all`;
+//         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au"}/api/users/all`;
         
 //         console.log("📍 UserListCard fetching from:", apiUrl);
 //         console.log("🔍 Token exists:", !!token);

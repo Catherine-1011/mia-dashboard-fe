@@ -293,7 +293,7 @@ const ReportPage = () => {
       if (!token) throw new Error("No authentication token found");
 
       const params = new URLSearchParams({ month: String(month), year: String(year) });
-      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000"}/api/admin/sales/gst-report?${params}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au"}/api/admin/sales/gst-report?${params}`;
 
       const res = await fetch(url, {
         method: "GET",

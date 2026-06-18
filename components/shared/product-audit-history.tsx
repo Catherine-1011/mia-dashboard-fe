@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AuditLogDiffModal, type AuditLogEntry } from "@/components/shared/audit-log-diff-modal";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
 
 // ─── Action badge config ───────────────────────────────────────────────────────
 const ACTION_CONFIG: Record<string, { label: string; className: string }> = {

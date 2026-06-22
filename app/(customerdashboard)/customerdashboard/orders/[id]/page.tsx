@@ -24,11 +24,33 @@ type OrderItem = {
   price?: any;
 };
 
+type FinancialSummary = {
+  productsSubtotal: number;
+  shippingCost: number;
+  gstAmount: number;
+  gstPercentage: number;
+  platformCommissionRate: number;
+  platformCommission: number;
+  customerTotal: number;
+  sellerPayout: number;
+  parentCouponDiscount?: number;
+  parentCouponCode?: string;
+};
+
+type SubOrderDetail = {
+  id: string | null;
+  sellerId?: string;
+  sellerName?: string;
+  subtotal?: number;
+  financialSummary?: FinancialSummary;
+};
+
 type Order = {
   id: any;
   displayId?: string;
   createdAt: any;
   status: any;
+  type?: "DIRECT" | "MULTI_SELLER";
   items?: OrderItem[];
   totalAmount: any;
   trackingNumber?: any;
@@ -36,6 +58,8 @@ type Order = {
   paymentMethod?: any;
   statusReason?: any;
   shippingAddress?: any;
+  subOrders?: SubOrderDetail[];
+  sellerCount?: number;
 };
 
 export default function CustomerOrderDetailPage() {
@@ -166,6 +190,27 @@ export default function CustomerOrderDetailPage() {
 
   const summary = (addr as any).orderSummary ?? {};
   const sm = summary.shippingMethod ?? {};
+
+  const isMultiSeller = order.type === "MULTI_SELLER" || (order.subOrders && order.subOrders.length > 1);
+  const subOrders = order.subOrders ?? [];
+  const sellerCount = order.sellerCount ?? subOrders.length;
+  const subOrdersWithFinancial = subOrders.filter(s => s.financialSummary);
+
+  let aggregatedSubtotal = parseFloat(summary.subtotal || '0');
+  let aggregatedShipping = parseFloat(summary.shippingCost || '0');
+  let aggregatedGst = parseFloat(summary.gstAmount || '0');
+  let aggregatedPlatformCommission = 0;
+  let aggregatedGstPct = summary.gstPercentage;
+
+  if (isMultiSeller && subOrdersWithFinancial.length > 0) {
+    aggregatedSubtotal = subOrdersWithFinancial.reduce((acc, s) => acc + (s.financialSummary!.productsSubtotal ?? 0), 0);
+    aggregatedShipping = subOrdersWithFinancial.reduce((acc, s) => acc + (s.financialSummary!.shippingCost ?? 0), 0);
+    aggregatedGst = subOrdersWithFinancial.reduce((acc, s) => acc + (s.financialSummary!.gstAmount ?? 0), 0);
+    aggregatedPlatformCommission = subOrdersWithFinancial.reduce((acc, s) => acc + (s.financialSummary!.platformCommission ?? 0), 0);
+    aggregatedGstPct = subOrdersWithFinancial[0]?.financialSummary?.gstPercentage ?? summary.gstPercentage;
+  } else if (isMultiSeller && sellerCount > 1) {
+    aggregatedShipping = parseFloat(summary.shippingCost || '0') * sellerCount;
+  }
 
   const cityLabel = getCityLabel(addr.country);
   const addrFields: [string, string][] = [
@@ -375,25 +420,28 @@ export default function CustomerOrderDetailPage() {
       </Card>
 
       {/* Order Totals */}
-      {(summary.subtotal != null || summary.shippingCost != null || order.totalAmount != null) && (
+      {(summary.subtotal != null || summary.shippingCost != null || order.totalAmount != null || subOrdersWithFinancial.length > 0) && (
         <Card>
           <div className="flex items-center gap-2 px-4 py-2.5 bg-muted border-b rounded-t-lg">
             <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order Totals</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order Summary</span>
           </div>
           <div className="px-4 py-3 space-y-2 text-sm">
-            {summary.subtotal != null && (
+            {(summary.subtotal != null || aggregatedSubtotal > 0) && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>${summary.subtotal}</span>
+                <span>${aggregatedSubtotal.toFixed(2)}</span>
               </div>
             )}
-            {summary.shippingCost != null && (
+            {(summary.shippingCost != null || aggregatedShipping > 0) && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   Shipping{sm.name ? ` · ${sm.name}` : ""}
+                  {isMultiSeller && sellerCount > 1 && (
+                    <span className="text-xs block text-muted-foreground/70">{sellerCount} sellers</span>
+                  )}
                 </span>
-                <span>${summary.shippingCost}</span>
+                <span>${aggregatedShipping.toFixed(2)}</span>
               </div>
             )}
             {summary.discountAmount != null && Number(summary.discountAmount) > 0 && (
@@ -402,10 +450,16 @@ export default function CustomerOrderDetailPage() {
                 <span>− ${summary.discountAmount}</span>
               </div>
             )}
-            {summary.gstAmount != null && Number(summary.gstAmount) > 0 && (
+            {aggregatedGst > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">GST{summary.gstPercentage ? ` (${summary.gstPercentage}%)` : ""}</span>
-                <span>${summary.gstAmount}</span>
+                <span className="text-muted-foreground">GST{aggregatedGstPct ? ` (${aggregatedGstPct}%)` : ""}</span>
+                <span>${aggregatedGst.toFixed(2)}</span>
+              </div>
+            )}
+            {aggregatedPlatformCommission > 0 && (
+              <div className="flex justify-between text-orange-600">
+                <span>Platform Commission</span>
+                <span>−${aggregatedPlatformCommission.toFixed(2)}</span>
               </div>
             )}
             <div className="border-t pt-2 mt-1 flex justify-between font-bold text-base">
@@ -413,6 +467,30 @@ export default function CustomerOrderDetailPage() {
               <span>${order.totalAmount}</span>
             </div>
           </div>
+
+          {/* Per-seller breakdown for multi-seller orders */}
+          {isMultiSeller && subOrdersWithFinancial.length > 0 && (
+            <div className="border-t px-4 py-3 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Per-Seller Breakdown</p>
+              {subOrdersWithFinancial.map((sub, idx) => (
+                <div key={sub.id || idx} className="bg-muted/30 rounded-lg p-3 space-y-1.5 text-sm">
+                  <p className="font-medium text-sm">{sub.sellerName || `Seller ${idx + 1}`}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-right">${sub.financialSummary!.productsSubtotal.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-right">${sub.financialSummary!.shippingCost.toFixed(2)}</span>
+                    <span className="text-muted-foreground">GST ({sub.financialSummary!.gstPercentage}%)</span>
+                    <span className="text-right">${sub.financialSummary!.gstAmount.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Platform Commission ({sub.financialSummary!.platformCommissionRate}%)</span>
+                    <span className="text-right text-orange-600">−${sub.financialSummary!.platformCommission.toFixed(2)}</span>
+                    <span className="text-muted-foreground font-medium">Customer Total</span>
+                    <span className="text-right font-medium">${sub.financialSummary!.customerTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
     </div>

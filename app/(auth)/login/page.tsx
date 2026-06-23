@@ -484,7 +484,7 @@ function LoginForm() {
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-col gap-4">
+      {/* <CardFooter className="flex flex-col gap-4">
         {!showOTP && (
           <>
             <div className="relative w-full flex items-center gap-2">
@@ -494,10 +494,7 @@ function LoginForm() {
               </span>
               <div className="flex-1 border-t border-border" />
             </div>
-            {/* <a
-              href={`https://backend.madeinarnhemland.com.au/api/auth/saml/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
-              className="w-full"
-            > */}
+            
             <a
               href={
                 `${API_BASE_URL}/api/auth/saml/login` +
@@ -525,7 +522,7 @@ function LoginForm() {
             </a>
           </>
         )}
-      </CardFooter>
+      </CardFooter> */}
     </Card>
   );
 }

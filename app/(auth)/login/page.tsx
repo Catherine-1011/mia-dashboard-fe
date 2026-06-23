@@ -222,7 +222,7 @@ function LoginForm() {
         setLoginPassword(values.password);
         setShowOTP(true);
         toast.info(
-          response.data.message || "Please enter the OTP sent to your email.",
+          response.data.message || "Please enter the one-time code sent to your email.",
         );
         return;
       }
@@ -246,12 +246,12 @@ function LoginForm() {
     e.preventDefault();
 
     if (!loginEmail || !otp) {
-      toast.error("Please enter the OTP");
+      toast.error("Please enter the one-time code");
       return;
     }
 
     if (otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
+      toast.error("Please enter a valid 6-digit one-time code");
       return;
     }
 
@@ -279,8 +279,8 @@ function LoginForm() {
       const err = error as Error;
       console.error("❌ OTP verification error:", err);
 
-      toast.error("OTP verification failed", {
-        description: err.message || "Invalid OTP. Please try again.",
+      toast.error("Verification failed", {
+        description: err.message || "Invalid one-time code. Please try again.",
       });
 
       setOTP("");
@@ -303,8 +303,8 @@ function LoginForm() {
       const response = await resendLoginOTP(loginEmail);
 
       if (response.success) {
-        toast.success("OTP resent successfully", {
-          description: "Please check your email for the new OTP.",
+        toast.success("Code resent successfully", {
+          description: "Please check your email for the new one-time code.",
         });
         setOTP("");
       } else {
@@ -313,7 +313,7 @@ function LoginForm() {
     } catch (error) {
       const err = error as Error;
       console.error("❌ Resend OTP error:", err);
-      toast.error("Failed to resend OTP", {
+      toast.error("Failed to resend code", {
         description: err.message,
       });
     } finally {
@@ -339,7 +339,7 @@ function LoginForm() {
         </CardTitle>
         <CardDescription>
           {showOTP
-            ? "Enter the OTP sent to your email address"
+            ? "Enter the one-time code sent to your email address"
             : "Enter your credentials to access your account"}
         </CardDescription>
       </CardHeader>
@@ -420,11 +420,11 @@ function LoginForm() {
           <form onSubmit={handleVerifyOTP} className="space-y-4">
             <div>
               <label className="block mb-2 text-sm font-medium">
-                Enter OTP
+                Enter One-Time Code
               </label>
               <Input
                 type="text"
-                placeholder="Enter 6-digit OTP"
+                placeholder="Enter 6-digit code"
                 value={otp}
                 onChange={(e) => setOTP(e.target.value.replace(/\D/g, ""))}
                 disabled={isOTPLoading}
@@ -433,7 +433,7 @@ function LoginForm() {
                 className="text-center text-lg tracking-widest"
               />
               <p className="text-xs text-gray-500 mt-2">
-                OTP sent to {loginEmail}
+                One-time code sent to {loginEmail}
               </p>
             </div>
 
@@ -448,7 +448,7 @@ function LoginForm() {
                   Verifying...
                 </>
               ) : (
-                "Verify OTP & Login"
+                "Verify & Login"
               )}
             </Button>
 
@@ -476,7 +476,7 @@ function LoginForm() {
                     Resending...
                   </>
                 ) : (
-                  "Resend OTP"
+                  "Resend Code"
                 )}
               </Button>
             </div>

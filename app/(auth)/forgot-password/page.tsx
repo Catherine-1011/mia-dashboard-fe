@@ -35,7 +35,7 @@ const emailSchema = z.object({
 // ── Step 2 schema ──────────────────────────────────────────────
 const resetSchema = z
 	.object({
-		otp: z.string().min(1, { message: "OTP is required." }),
+		otp: z.string().min(1, { message: "One-time code is required." }),
 		newPassword: z
 			.string()
 			.min(6, { message: "Password must be at least 6 characters." }),
@@ -65,12 +65,12 @@ function EmailStep({
 		setLoading(true);
 		try {
 			await api.post("/api/auth/forgot-password", { email: values.email });
-			toast.success("OTP sent!", {
-				description: "Check your email for the one-time password.",
+			toast.success("Code sent!", {
+				description: "Check your email for the one-time code.",
 			});
 			onSuccess(values.email);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : "Failed to send OTP.";
+			const msg = err instanceof Error ? err.message : "Failed to send code.";
 			toast.error("Error", { description: msg });
 		} finally {
 			setLoading(false);
@@ -82,7 +82,7 @@ function EmailStep({
 			<CardHeader>
 				<CardTitle className="text-2xl">Forgot Password</CardTitle>
 				<CardDescription>
-					Enter your email and we will send you an OTP to reset your password.
+					Enter your email and we will send you a one-time code to reset your password.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -103,7 +103,7 @@ function EmailStep({
 						/>
 						<Button type="submit" className="w-full" disabled={loading}>
 							{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-							Send OTP
+							Send Code
 						</Button>
 					</form>
 				</Form>
@@ -171,7 +171,7 @@ function ResetStep({ email }: { email: string }) {
 			<CardHeader>
 				<CardTitle className="text-2xl">Reset Password</CardTitle>
 				<CardDescription>
-					Enter the OTP sent to <span className="font-medium text-foreground">{email}</span> and choose a new password.
+					Enter the one-time code sent to <span className="font-medium text-foreground">{email}</span> and choose a new password.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -182,9 +182,9 @@ function ResetStep({ email }: { email: string }) {
 							name="otp"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>OTP</FormLabel>
+									<FormLabel>One-Time Code</FormLabel>
 									<FormControl>
-										<Input placeholder="Enter OTP" {...field} />
+										<Input placeholder="Enter code" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>

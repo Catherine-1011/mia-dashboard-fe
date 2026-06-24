@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Truck, Calendar, ClipboardList, DollarSign, Eye, ChevronDown, ChevronUp, Package, CheckCircle2, XCircle, Download, AlertTriangle, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Truck, Calendar, ClipboardList, DollarSign, Eye, ChevronDown, ChevronUp, Package, CheckCircle2, XCircle, Download, AlertTriangle, X, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -788,6 +788,7 @@ const CustomerOrdersPage = () => {
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
   const [refundModalOrder, setRefundModalOrder] = useState<Order | null>(null);
   const [submittedRefundOrderIds, setSubmittedRefundOrderIds] = useState<Set<string>>(new Set());
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -939,6 +940,32 @@ const CustomerOrdersPage = () => {
       toast.error(err.message || "Failed to download invoice.");
     } finally {
       setDownloadingInvoiceId(null);
+    }
+  };
+
+  const handleReorder = async (order: Order) => {
+    const cleanDisplayId = order.displayId.replace(/^#/, "");
+    setReorderingId(order.id);
+    try {
+      const res = await api.post(`/api/orders/reorder/${cleanDisplayId}`);
+      if (!res.success) {
+        toast.error(res.message || "Failed to reorder");
+        return;
+      }
+      if (res.unavailableItems?.length > 0) {
+        const names = res.unavailableItems.map((i: any) => i.title).join(", ");
+        toast.warning(`Some items are unavailable: ${names}`);
+      }
+      if (res.addedItems?.length > 0) {
+        toast.success(`${res.addedItems.length} item${res.addedItems.length > 1 ? "s" : ""} added to cart`);
+        window.open("https://madeinarnhemland.com.au/checkout", "_blank");
+      } else {
+        toast.error("No items could be added to cart");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reorder");
+    } finally {
+      setReorderingId(null);
     }
   };
 
@@ -1173,6 +1200,22 @@ const CustomerOrdersPage = () => {
                                     onClick={() => setCancelModalOrder(order)}
                                   >
                                     Cancel Order
+                                  </Button>
+                                )}
+
+                                {/* Reorder Button (DELIVERED orders only) */}
+                                {order.status.toLowerCase() === "delivered" && (
+                                  <Button
+                                    variant="outline"
+                                    disabled={reorderingId === order.id}
+                                    onClick={() => handleReorder(order)}
+                                  >
+                                    {reorderingId === order.id ? (
+                                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                                    ) : (
+                                      <RefreshCw className="h-4 w-4 mr-2" />
+                                    )}
+                                    Reorder
                                   </Button>
                                 )}
 

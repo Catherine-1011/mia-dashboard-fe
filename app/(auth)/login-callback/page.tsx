@@ -72,7 +72,7 @@ function LoginCallbackContent() {
         });
 
         const roleDest =
-          role === "ADMIN" || role === "admin" ? "/admindashboard" :
+          role === "ADMIN" || role === "admin" || role === "SUPER_ADMIN" ? "/admindashboard" :
           role === "SELLER" || role === "seller" ? "/sellerdashboard" :
           "/customerdashboard";
         const dest = safePath ?? roleDest;

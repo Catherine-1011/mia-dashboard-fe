@@ -31,6 +31,7 @@ import {
 	Calculator,
 	FileText,
 	Mail,
+	ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -57,6 +58,7 @@ const adminSidebarItems = [
 	{ title: "Blogs",     href: "/admindashboard/blogs",      icon: FileText,        badge: null },
 	{ title: "Newsletter", href: "/admindashboard/newsletter", icon: Mail,            badge: null },
 	
+	{ title: "Admin Users",    href: "/admindashboard/admin-users",   icon: ShieldAlert,     badge: null },
 	{ title: "Notifications",  href: "/admindashboard/notifications", icon: Bell,            badge: null },
 	{ title: "Settings",       href: "/admindashboard/settings",      icon: Settings,        badge: null },
 ];

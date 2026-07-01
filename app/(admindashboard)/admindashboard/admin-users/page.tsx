@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-amber-700 text-sm">
-							This page is only accessible to Super Admin only.
+							This page is accessible to Super Admin.
 						</p>
 					</CardContent>
 				</Card>

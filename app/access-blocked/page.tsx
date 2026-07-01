@@ -13,11 +13,11 @@ export default function AccessBlockedPage() {
 					<div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 border-4 border-gray-300">
 						<Ban className="h-12 w-12 text-gray-500" />
 					</div>
-					<CardTitle className="text-2xl text-gray-800">Account Blocked</CardTitle>
+					<CardTitle className="text-2xl text-gray-800">Account Restricted</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<p className="text-gray-700">
-						Your account has been blocked. You are no longer authorized to access the admin dashboard.
+						Your account has been restricted. You are no longer authorized to access the admin dashboard.
 					</p>
 					<div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200">
 						Please contact your administrator for more information.

@@ -33,9 +33,13 @@ import {
 	CheckCircle,
 	XCircle,
 	Ban,
+	Archive,
 	Unlock,
+	RotateCcw,
 	Users,
 	ShieldOff,
+	UserPlus,
+	Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
@@ -45,7 +49,7 @@ import { decodeJWT } from "@/lib/jwt";
 type SamlUser = {
 	id: string;
 	userId: string;
-	status: "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED";
+	status: "PENDING" | "APPROVED" | "REJECTED" | "BLOCKED" | "ARCHIVED";
 	approvedBy: string | null;
 	approvedAt: string | null;
 	rejectedBy: string | null;
@@ -54,6 +58,9 @@ type SamlUser = {
 	blockedBy: string | null;
 	blockedAt: string | null;
 	blockReason: string | null;
+	archivedBy: string | null;
+	archivedAt: string | null;
+	archiveReason: string | null;
 	createdAt: string;
 	user: {
 		id: string;
@@ -94,6 +101,8 @@ function statusBadge(status: string) {
 			return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
 		case "BLOCKED":
 			return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400"><Ban className="h-3 w-3 mr-1" />Blocked</Badge>;
+		case "ARCHIVED":
+			return <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-400"><Archive className="h-3 w-3 mr-1" />Archived</Badge>;
 		default:
 			return <Badge variant="outline">{status}</Badge>;
 	}
@@ -107,12 +116,18 @@ export default function AdminUsersPage() {
 	const [search, setSearch] = useState("");
 	const [activeTab, setActiveTab] = useState("all");
 	const [actionLoading, setActionLoading] = useState<string | null>(null);
+	const [createDialogOpen, setCreateDialogOpen] = useState(false);
+	const [createName, setCreateName] = useState("");
+	const [createEmail, setCreateEmail] = useState("");
+	const [createLoading, setCreateLoading] = useState(false);
 
 	// Dialog state
 	const [rejectDialog, setRejectDialog] = useState<SamlUser | null>(null);
 	const [blockDialog, setBlockDialog] = useState<SamlUser | null>(null);
 	const [approveDialog, setApproveDialog] = useState<SamlUser | null>(null);
 	const [unblockDialog, setUnblockDialog] = useState<SamlUser | null>(null);
+	const [archiveDialog, setArchiveDialog] = useState<SamlUser | null>(null);
+	const [unarchiveDialog, setUnarchiveDialog] = useState<SamlUser | null>(null);
 	const [reason, setReason] = useState("");
 
 	// Check if current user is SUPER_ADMIN
@@ -145,6 +160,41 @@ export default function AdminUsersPage() {
 	}, [isSuperAdmin, fetchSamlUsers]);
 
 	// --- Actions ---
+	const handleCreateAdmin = async () => {
+		const name = createName.trim();
+		const email = createEmail.trim().toLowerCase();
+
+		if (!name) {
+			toast.error("Full name is required");
+			return;
+		}
+
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			toast.error("Enter a valid email address");
+			return;
+		}
+
+		setCreateLoading(true);
+		try {
+			await apiClient("/api/admin/saml-users", {
+				method: "POST",
+				body: JSON.stringify({ name, email }),
+			});
+			toast.success(`${name} has been created for SAML admin access`);
+			setCreateDialogOpen(false);
+			setCreateName("");
+			setCreateEmail("");
+			fetchSamlUsers();
+		} catch (error) {
+			const err = error as Error;
+			toast.error("Failed to create admin", {
+				description: err.message || "Please check the details and try again.",
+			});
+		} finally {
+			setCreateLoading(false);
+		}
+	};
+
 	const handleApprove = async () => {
 		if (!approveDialog) return;
 		setActionLoading(approveDialog.userId);
@@ -218,6 +268,42 @@ export default function AdminUsersPage() {
 		}
 	};
 
+	const handleArchive = async () => {
+		if (!archiveDialog) return;
+		setActionLoading(archiveDialog.userId);
+		try {
+			await apiClient(`/api/admin/saml-users/${archiveDialog.userId}/archive`, {
+				method: "PUT",
+				body: JSON.stringify({ reason }),
+			});
+			toast.success(`${archiveDialog.user.name} archived`);
+			setArchiveDialog(null);
+			setReason("");
+			fetchSamlUsers();
+		} catch {
+			toast.error("Failed to archive user");
+		} finally {
+			setActionLoading(null);
+		}
+	};
+
+	const handleUnarchive = async () => {
+		if (!unarchiveDialog) return;
+		setActionLoading(unarchiveDialog.userId);
+		try {
+			await apiClient(`/api/admin/saml-users/${unarchiveDialog.userId}/unarchive`, {
+				method: "PUT",
+			});
+			toast.success(`${unarchiveDialog.user.name} unarchived and approved`);
+			setUnarchiveDialog(null);
+			fetchSamlUsers();
+		} catch {
+			toast.error("Failed to unarchive user");
+		} finally {
+			setActionLoading(null);
+		}
+	};
+
 	// --- Filtering ---
 	const filteredUsers = samlUsers.filter((u) => {
 		const matchesSearch =
@@ -233,6 +319,7 @@ export default function AdminUsersPage() {
 		approved: samlUsers.filter((u) => u.status === "APPROVED").length,
 		rejected: samlUsers.filter((u) => u.status === "REJECTED").length,
 		blocked: samlUsers.filter((u) => u.status === "BLOCKED").length,
+		archived: samlUsers.filter((u) => u.status === "ARCHIVED").length,
 	};
 
 	// --- Not Super Admin ---
@@ -272,13 +359,19 @@ export default function AdminUsersPage() {
 	return (
 		<div className="space-y-6 p-6">
 			{/* Header */}
-			<div>
-				<h1 className="text-2xl font-bold tracking-tight">Admin User Management</h1>
-				<p className="text-muted-foreground">Manage SAML/AuthPoint admin users — approve, reject, or block access to the dashboard.</p>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight">Admin User Management</h1>
+					<p className="text-muted-foreground">Manage SAML/AuthPoint admin users - create, approve, reject, block, or archive dashboard access.</p>
+				</div>
+				<Button onClick={() => setCreateDialogOpen(true)} className="gap-2 self-start sm:self-auto">
+					<UserPlus className="h-4 w-4" />
+					Create Admin
+				</Button>
 			</div>
 
 			{/* Stats Cards */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+			<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 				<Card className="border-blue-200">
 					<CardContent className="pt-4 pb-4">
 						<div className="flex items-center gap-3">
@@ -311,6 +404,14 @@ export default function AdminUsersPage() {
 						</div>
 					</CardContent>
 				</Card>
+				<Card className="border-slate-200">
+					<CardContent className="pt-4 pb-4">
+						<div className="flex items-center gap-3">
+							<div className="p-2 bg-slate-50 rounded-lg"><Archive className="h-5 w-5 text-slate-600" /></div>
+							<div><p className="text-2xl font-bold">{counts.archived}</p><p className="text-xs text-muted-foreground">Archived</p></div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
 			{/* Tabs + Search */}
@@ -322,6 +423,7 @@ export default function AdminUsersPage() {
 						<TabsTrigger value="approved">Approved ({counts.approved})</TabsTrigger>
 						<TabsTrigger value="rejected">Rejected ({counts.rejected})</TabsTrigger>
 						<TabsTrigger value="blocked">Blocked ({counts.blocked})</TabsTrigger>
+						<TabsTrigger value="archived">Archived ({counts.archived})</TabsTrigger>
 					</TabsList>
 					<div className="relative w-full sm:w-72">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -335,7 +437,7 @@ export default function AdminUsersPage() {
 				</div>
 
 				{/* Table Content — same for all tabs */}
-				{["all", "pending", "approved", "rejected", "blocked"].map((tab) => (
+				{["all", "pending", "approved", "rejected", "blocked", "archived"].map((tab) => (
 					<TabsContent key={tab} value={tab}>
 						<Card>
 							<CardContent className="p-0">
@@ -386,6 +488,11 @@ export default function AdminUsersPage() {
 														{saml.status === "BLOCKED" && saml.blockReason && (
 															<span title={saml.blockReason}>Reason: {saml.blockReason}</span>
 														)}
+														{saml.status === "ARCHIVED" && (
+															<span title={saml.archiveReason || undefined}>
+																Archived{saml.archivedAt ? `: ${formatDate(saml.archivedAt)}` : ""}{saml.archiveReason ? ` - ${saml.archiveReason}` : ""}
+															</span>
+														)}
 														{saml.status === "APPROVED" && saml.approvedAt && (
 															<span>Approved: {formatDate(saml.approvedAt)}</span>
 														)}
@@ -419,25 +526,58 @@ export default function AdminUsersPage() {
 																		</>
 																	)}
 																	{saml.status === "APPROVED" && (
-																		<Button
-																			size="sm"
-																			variant="outline"
-																			className="border-red-300 text-red-700 hover:bg-red-50"
-																			onClick={() => { setBlockDialog(saml); setReason(""); }}
-																			disabled={actionLoading === saml.userId}
-																		>
-																			<Ban className="h-3.5 w-3.5 mr-1" />Block
-																		</Button>
+																		<>
+																			<Button
+																				size="sm"
+																				variant="outline"
+																				className="border-red-300 text-red-700 hover:bg-red-50"
+																				onClick={() => { setBlockDialog(saml); setReason(""); }}
+																				disabled={actionLoading === saml.userId}
+																			>
+																				<Ban className="h-3.5 w-3.5 mr-1" />Block
+																			</Button>
+																			<Button
+																				size="sm"
+																				variant="outline"
+																				className="border-slate-300 text-slate-700 hover:bg-slate-50"
+																				onClick={() => { setArchiveDialog(saml); setReason(""); }}
+																				disabled={actionLoading === saml.userId}
+																			>
+																				<Archive className="h-3.5 w-3.5 mr-1" />Archive
+																			</Button>
+																		</>
 																	)}
 																	{(saml.status === "BLOCKED" || saml.status === "REJECTED") && (
+																		<>
+																			<Button
+																				size="sm"
+																				variant="outline"
+																				className="border-green-300 text-green-700 hover:bg-green-50"
+																				onClick={() => setUnblockDialog(saml)}
+																				disabled={actionLoading === saml.userId}
+																			>
+																				<Unlock className="h-3.5 w-3.5 mr-1" />Unblock
+																			</Button>
+																			<Button
+																				size="sm"
+																				variant="outline"
+																				className="border-slate-300 text-slate-700 hover:bg-slate-50"
+																				onClick={() => { setArchiveDialog(saml); setReason(""); }}
+																				disabled={actionLoading === saml.userId}
+																			>
+																				<Archive className="h-3.5 w-3.5 mr-1" />Archive
+																			</Button>
+																		</>
+																	)}
+																	{saml.status === "ARCHIVED" && (
 																		<Button
 																			size="sm"
 																			variant="outline"
 																			className="border-green-300 text-green-700 hover:bg-green-50"
-																			onClick={() => setUnblockDialog(saml)}
+																			onClick={() => setUnarchiveDialog(saml)}
 																			disabled={actionLoading === saml.userId}
 																		>
-																			<Unlock className="h-3.5 w-3.5 mr-1" />Unblock
+																			<RotateCcw className="h-3.5 w-3.5 mr-1" />Unarchive
 																		</Button>
 																	)}
 																</>
@@ -454,6 +594,63 @@ export default function AdminUsersPage() {
 					</TabsContent>
 				))}
 			</Tabs>
+
+			{/* Create Dialog */}
+			<Dialog open={createDialogOpen} onOpenChange={(open) => {
+				if (!createLoading) {
+					setCreateDialogOpen(open);
+					if (!open) {
+						setCreateName("");
+						setCreateEmail("");
+					}
+				}
+			}}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Create Admin</DialogTitle>
+						<DialogDescription>
+							Create a local allowlist record for WatchGuard/AuthPoint SAML admin access.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<label className="text-sm font-medium" htmlFor="create-admin-name">Full Name</label>
+							<Input
+								id="create-admin-name"
+								placeholder="Enter full name"
+								value={createName}
+								onChange={(e) => setCreateName(e.target.value)}
+								disabled={createLoading}
+							/>
+						</div>
+						<div className="space-y-2">
+							<label className="text-sm font-medium" htmlFor="create-admin-email">Email Address</label>
+							<Input
+								id="create-admin-email"
+								type="email"
+								placeholder="admin@example.com"
+								value={createEmail}
+								onChange={(e) => setCreateEmail(e.target.value)}
+								disabled={createLoading}
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={createLoading}>Cancel</Button>
+						<Button onClick={handleCreateAdmin} disabled={createLoading}>
+							{createLoading ? (
+								<>
+									<Loader2 className="h-4 w-4 mr-1 animate-spin" />Creating
+								</>
+							) : (
+								<>
+									<UserPlus className="h-4 w-4 mr-1" />Create Admin
+								</>
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{/* Approve Dialog */}
 			<Dialog open={!!approveDialog} onOpenChange={(open) => !open && setApproveDialog(null)}>
@@ -534,6 +731,48 @@ export default function AdminUsersPage() {
 						<Button variant="outline" onClick={() => setUnblockDialog(null)}>Cancel</Button>
 						<Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleUnblock} disabled={!!actionLoading}>
 							<Unlock className="h-4 w-4 mr-1" />Unblock & Approve
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Archive Dialog */}
+			<Dialog open={!!archiveDialog} onOpenChange={(open) => !open && setArchiveDialog(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Archive Admin User</DialogTitle>
+						<DialogDescription>
+							This will move <strong>{archiveDialog?.user.name}</strong> into the archive and revoke dashboard access. Their details will remain saved.
+						</DialogDescription>
+					</DialogHeader>
+					<Textarea
+						placeholder="Reason for archiving (optional)"
+						value={reason}
+						onChange={(e) => setReason(e.target.value)}
+						className="mt-2"
+					/>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setArchiveDialog(null)}>Cancel</Button>
+						<Button variant="destructive" onClick={handleArchive} disabled={!!actionLoading}>
+							<Archive className="h-4 w-4 mr-1" />Archive
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Unarchive Dialog */}
+			<Dialog open={!!unarchiveDialog} onOpenChange={(open) => !open && setUnarchiveDialog(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Unarchive Admin User</DialogTitle>
+						<DialogDescription>
+							This will restore <strong>{unarchiveDialog?.user.name}</strong> to approved SAML admin access.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setUnarchiveDialog(null)}>Cancel</Button>
+						<Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleUnarchive} disabled={!!actionLoading}>
+							<RotateCcw className="h-4 w-4 mr-1" />Unarchive & Approve
 						</Button>
 					</DialogFooter>
 				</DialogContent>

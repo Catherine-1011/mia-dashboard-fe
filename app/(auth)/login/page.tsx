@@ -484,7 +484,7 @@ function LoginForm() {
         )}
       </CardContent>
 
-      {/* <CardFooter className="flex flex-col gap-4">
+      <CardFooter className="flex flex-col gap-4">
         {!showOTP && (
           <>
             <div className="relative w-full flex items-center gap-2">
@@ -522,7 +522,7 @@ function LoginForm() {
             </a>
           </>
         )}
-      </CardFooter> */}
+      </CardFooter>
     </Card>
   );
 }

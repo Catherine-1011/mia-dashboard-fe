@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -119,6 +126,8 @@ export default function AdminUsersPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [createName, setCreateName] = useState("");
 	const [createEmail, setCreateEmail] = useState("");
+	const [createRole, setCreateRole] = useState("ADMIN");
+	const [createStatus, setCreateStatus] = useState("APPROVED");
 	const [createLoading, setCreateLoading] = useState(false);
 
 	// Dialog state
@@ -174,16 +183,23 @@ export default function AdminUsersPage() {
 			return;
 		}
 
+		if (!email.endsWith("@alpa.asn.au")) {
+			toast.error("Official ALPA email must end with @alpa.asn.au");
+			return;
+		}
+
 		setCreateLoading(true);
 		try {
 			await apiClient("/api/admin/saml-users", {
 				method: "POST",
-				body: JSON.stringify({ name, email }),
+				body: JSON.stringify({ name, email, role: createRole, status: createStatus }),
 			});
 			toast.success(`${name} has been created for SAML admin access`);
 			setCreateDialogOpen(false);
 			setCreateName("");
 			setCreateEmail("");
+			setCreateRole("ADMIN");
+			setCreateStatus("APPROVED");
 			fetchSamlUsers();
 		} catch (error) {
 			const err = error as Error;
@@ -602,6 +618,8 @@ export default function AdminUsersPage() {
 					if (!open) {
 						setCreateName("");
 						setCreateEmail("");
+						setCreateRole("ADMIN");
+						setCreateStatus("APPROVED");
 					}
 				}
 			}}>
@@ -628,11 +646,40 @@ export default function AdminUsersPage() {
 							<Input
 								id="create-admin-email"
 								type="email"
-								placeholder="admin@example.com"
+								placeholder="name@alpa.asn.au"
 								value={createEmail}
-								onChange={(e) => setCreateEmail(e.target.value)}
+								onChange={(e) => setCreateEmail(e.target.value.toLowerCase())}
+								onBlur={() => setCreateEmail((value) => value.trim().toLowerCase())}
 								disabled={createLoading}
 							/>
+						</div>
+						<div className="grid gap-4 sm:grid-cols-2">
+							<div className="space-y-2">
+								<label className="text-sm font-medium" htmlFor="create-admin-role">Role</label>
+								<Select value={createRole} onValueChange={setCreateRole} disabled={createLoading}>
+									<SelectTrigger id="create-admin-role">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ADMIN">Admin</SelectItem>
+										<SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-2">
+								<label className="text-sm font-medium" htmlFor="create-admin-status">Status</label>
+								<Select value={createStatus} onValueChange={setCreateStatus} disabled={createLoading}>
+									<SelectTrigger id="create-admin-status">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="APPROVED">Approved</SelectItem>
+										<SelectItem value="PENDING">Pending</SelectItem>
+										<SelectItem value="BLOCKED">Blocked</SelectItem>
+										<SelectItem value="ARCHIVED">Archived</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 					<DialogFooter>

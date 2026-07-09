@@ -126,7 +126,6 @@ export default function AdminUsersPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [createName, setCreateName] = useState("");
 	const [createEmail, setCreateEmail] = useState("");
-	const [createRole, setCreateRole] = useState("ADMIN");
 	const [createStatus, setCreateStatus] = useState("APPROVED");
 	const [createLoading, setCreateLoading] = useState(false);
 
@@ -192,13 +191,12 @@ export default function AdminUsersPage() {
 		try {
 			await apiClient("/api/admin/saml-users", {
 				method: "POST",
-				body: JSON.stringify({ name, email, role: createRole, status: createStatus }),
+				body: JSON.stringify({ name, email, role: "ADMIN", status: createStatus }),
 			});
 			toast.success(`${name} has been created for SAML admin access`);
 			setCreateDialogOpen(false);
 			setCreateName("");
 			setCreateEmail("");
-			setCreateRole("ADMIN");
 			setCreateStatus("APPROVED");
 			fetchSamlUsers();
 		} catch (error) {
@@ -618,7 +616,6 @@ export default function AdminUsersPage() {
 					if (!open) {
 						setCreateName("");
 						setCreateEmail("");
-						setCreateRole("ADMIN");
 						setCreateStatus("APPROVED");
 					}
 				}
@@ -655,16 +652,10 @@ export default function AdminUsersPage() {
 						</div>
 						<div className="grid gap-4 sm:grid-cols-2">
 							<div className="space-y-2">
-								<label className="text-sm font-medium" htmlFor="create-admin-role">Role</label>
-								<Select value={createRole} onValueChange={setCreateRole} disabled={createLoading}>
-									<SelectTrigger id="create-admin-role">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="ADMIN">Admin</SelectItem>
-										<SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-									</SelectContent>
-								</Select>
+								<label className="text-sm font-medium">Role</label>
+								<div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+									Admin
+								</div>
 							</div>
 							<div className="space-y-2">
 								<label className="text-sm font-medium" htmlFor="create-admin-status">Status</label>

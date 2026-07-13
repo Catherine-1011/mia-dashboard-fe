@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -24,7 +24,6 @@ const ACCESS_DENIED =
 	"You are not authorized to access this dashboard.\nPlease contact your administrator.";
 
 function CompleteAccessVerificationContent() {
-	const router = useRouter();
 	const searchParams = useSearchParams();
 	const session = searchParams.get("session") || "";
 	const [email, setEmail] = useState("");
@@ -59,10 +58,12 @@ function CompleteAccessVerificationContent() {
 				throw new Error(data.message || ACCESS_DENIED);
 			}
 
-			toast.success("Verification code sent");
-			router.replace(
-				`/verify-saml-otp?session=${encodeURIComponent(session)}&email=${encodeURIComponent(normalizedEmail)}`
-			);
+			if (!data.token || !data.redirectUrl) {
+				throw new Error("Access verification failed");
+			}
+
+			toast.success("Access verified");
+			window.location.replace(data.redirectUrl);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : ACCESS_DENIED;
 			setError(message);

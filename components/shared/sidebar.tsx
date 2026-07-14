@@ -51,7 +51,6 @@ const adminSidebarItems = [
 	{ title: "Shipping",    href: "/admindashboard/shipping",     icon: Truck,           badge: null },
 	{ title: "GST",         href: "/admindashboard/gst",          icon: Percent,         badge: null },
 	{ title: "Commissions", href: "/admindashboard/commissions",  icon: Coins,           badge: null },
-	{ title: "Stripe Payments Help", href: "https://support.stripe.com/", icon: CreditCard, badge: null },
 	{ title: "Feedback",    href: "/admindashboard/feedback",     icon: MessageSquare,   badge: null },
 	{ title: "Sponsored",   href: "/admindashboard/sponsored",    icon: Heart,           badge: null },
 	{ title: "Support",     href: "/admindashboard/support",      icon: Headset,         badge: null },

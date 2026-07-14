@@ -126,7 +126,6 @@ export default function AdminUsersPage() {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [createName, setCreateName] = useState("");
 	const [createEmail, setCreateEmail] = useState("");
-	const [createStatus, setCreateStatus] = useState("APPROVED");
 	const [createLoading, setCreateLoading] = useState(false);
 
 	// Dialog state
@@ -191,13 +190,12 @@ export default function AdminUsersPage() {
 		try {
 			await apiClient("/api/admin/saml-users", {
 				method: "POST",
-				body: JSON.stringify({ name, email, role: "ADMIN", status: createStatus }),
+				body: JSON.stringify({ name, email, role: "ADMIN", status: "APPROVED" }),
 			});
 			toast.success(`${name} has been created for SAML admin access`);
 			setCreateDialogOpen(false);
 			setCreateName("");
 			setCreateEmail("");
-			setCreateStatus("APPROVED");
 			fetchSamlUsers();
 		} catch (error) {
 			const err = error as Error;
@@ -616,7 +614,6 @@ export default function AdminUsersPage() {
 					if (!open) {
 						setCreateName("");
 						setCreateEmail("");
-						setCreateStatus("APPROVED");
 					}
 				}
 			}}>
@@ -650,26 +647,10 @@ export default function AdminUsersPage() {
 								disabled={createLoading}
 							/>
 						</div>
-						<div className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Role</label>
-								<div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-									Admin
-								</div>
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium" htmlFor="create-admin-status">Status</label>
-								<Select value={createStatus} onValueChange={setCreateStatus} disabled={createLoading}>
-									<SelectTrigger id="create-admin-status">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="APPROVED">Approved</SelectItem>
-										<SelectItem value="PENDING">Pending</SelectItem>
-										<SelectItem value="BLOCKED">Blocked</SelectItem>
-										<SelectItem value="ARCHIVED">Archived</SelectItem>
-									</SelectContent>
-								</Select>
+						<div className="space-y-2">
+							<label className="text-sm font-medium">Role</label>
+							<div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+								Admin
 							</div>
 						</div>
 					</div>

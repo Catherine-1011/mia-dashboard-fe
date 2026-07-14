@@ -471,6 +471,29 @@ export default function DashboardPage() {
 				</p>
 			</div>
 
+			{/* Stripe Payments Help */}
+			<a
+				href="https://support.stripe.com/"
+				target="_blank"
+				rel="noopener noreferrer"
+				className="flex items-center gap-4 rounded-xl border bg-card px-5 py-4 shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-200 group"
+			>
+				<div className="p-2 rounded-lg bg-indigo-50 group-hover:bg-indigo-100 transition-colors flex-shrink-0">
+					<CreditCard className="h-5 w-5 text-indigo-600" />
+				</div>
+				<div className="flex-1 min-w-0">
+					<p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+						Stripe Payments Help
+					</p>
+					<p className="text-xs text-muted-foreground truncate">
+						Questions about payouts, verification, fees or disputes? Visit Stripe&apos;s official support.
+					</p>
+				</div>
+				<span className="text-xs text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0">
+					support.stripe.com ↗
+				</span>
+			</a>
+
 			{/* Stats Grid */}
 			<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
 				{stats.map((stat) => {

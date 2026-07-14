@@ -32,6 +32,7 @@ import {
 	FileText,
 	Mail,
 	ShieldAlert,
+	CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -50,6 +51,7 @@ const adminSidebarItems = [
 	{ title: "Shipping",    href: "/admindashboard/shipping",     icon: Truck,           badge: null },
 	{ title: "GST",         href: "/admindashboard/gst",          icon: Percent,         badge: null },
 	{ title: "Commissions", href: "/admindashboard/commissions",  icon: Coins,           badge: null },
+	{ title: "Stripe Payments Help", href: "https://support.stripe.com/", icon: CreditCard, badge: null },
 	{ title: "Feedback",    href: "/admindashboard/feedback",     icon: MessageSquare,   badge: null },
 	{ title: "Sponsored",   href: "/admindashboard/sponsored",    icon: Heart,           badge: null },
 	{ title: "Support",     href: "/admindashboard/support",      icon: Headset,         badge: null },
@@ -192,13 +194,15 @@ export function Sidebar({ onMobileClose, isCollapsed: controlledCollapsed, onCol
 							{/* Group Items */}
 							<div className="space-y-2">
 								{group.items.map((item) => {
-									const isActive = pathname === item.href;
+									const isExternal = item.href.startsWith("http");
+									const isActive = !isExternal && pathname === item.href;
 									const Icon = item.icon;
 
 									return (
 										<Link
 											key={item.href}
 											href={item.href}
+											{...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
 											onClick={handleLinkClick}
 											className={cn(
 												"group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 hover:bg-muted",

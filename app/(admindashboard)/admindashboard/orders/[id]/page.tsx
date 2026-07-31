@@ -53,6 +53,19 @@ type FinancialSummary = {
   sellerPayout: number;
 };
 
+type PaymentRecord = {
+  id: string;
+  sellerId?: string | null;
+  paymentFlow?: string | null;
+  paymentOwner?: "CONNECTED" | "PLATFORM" | string;
+  stripeAccountId?: string | null;
+  stripePaymentIntentId?: string | null;
+  grossAmount?: number;
+  applicationFeeAmount?: number;
+  paymentStatus?: string | null;
+  refundStatus?: string | null;
+};
+
 type SubOrderInfo = {
   subOrderId: string;
   subDisplayId?: string | null;
@@ -110,6 +123,7 @@ type Order = {
   couponCode?: string | null;
   originalTotal?: string | null;
   paymentStatus?: string | null;
+  paymentRecords?: PaymentRecord[];
   orderSummary?: any;
   financialSummary?: FinancialSummary;
 };
@@ -401,6 +415,7 @@ function mapDetailedToOrder(d: any): Order {
       d.estimatedDelivery ?? d.subOrders?.[0]?.estimatedDelivery ?? null,
     paymentMethod: d.paymentMethod,
     paymentStatus: d.paymentStatus ?? null,
+    paymentRecords: d.paymentRecords ?? [],
     statusReason: d.statusReason ?? d.subOrders?.[0]?.statusReason ?? null,
     subtotal: d.subtotal ?? (d.subOrders?.length === 1 ? d.subOrders[0].subtotal : null) ?? null,
     discountAmount: d.discountAmount ?? null,
@@ -763,6 +778,40 @@ function OrderDetailContent() {
             <div className="px-4 py-4 text-sm text-muted-foreground">No address on file.</div>
           )}
         </Card>
+
+        {/* Payment Ownership */}
+        {order.paymentRecords && order.paymentRecords.length > 0 && (
+          <Card>
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-muted border-b rounded-t-lg">
+              <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Ownership</span>
+            </div>
+            <div className="divide-y text-sm">
+              {order.paymentRecords.map((record) => (
+                <div key={record.id} className="px-4 py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-medium">
+                      {record.paymentOwner === "PLATFORM" || record.paymentFlow === "PLATFORM_ACCOUNT"
+                        ? "Platform payment"
+                        : "Connected seller payment"}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {record.stripePaymentIntentId || "No PaymentIntent"}
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <Badge variant={record.paymentOwner === "PLATFORM" || record.paymentFlow === "PLATFORM_ACCOUNT" ? "secondary" : "outline"}>
+                      {record.paymentOwner === "PLATFORM" || record.paymentFlow === "PLATFORM_ACCOUNT" ? "PLATFORM" : "CONNECTED SELLER"}
+                    </Badge>
+                    {typeof record.grossAmount === "number" && (
+                      <div className="text-xs text-muted-foreground">${record.grossAmount.toFixed(2)}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Order Totals / Financial Summary */}
         <Card>

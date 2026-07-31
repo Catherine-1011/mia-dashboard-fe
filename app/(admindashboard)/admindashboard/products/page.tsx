@@ -22,18 +22,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ProductAuditHistory } from "@/components/shared/product-audit-history";
+import { ProductCreateForm } from "@/components/products/ProductCreateForm";
 
 type Seller = {
   id: string;
   name: string;
   email: string;
   pendingCount: number;
-};
-
-type PlatformOwner = {
-  id: string;
-  name: string;
-  email: string;
 };
 
 type Product = {
@@ -162,8 +157,6 @@ export default function AdminProductsPage() {
   const [selectedSeller, setSelectedSeller] = useState<string>(
     () => (typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_selectedSeller") ?? "" : "")
   );
-  const [platformOwners, setPlatformOwners] = useState<PlatformOwner[]>([]);
-  const [selectedPlatformOwner, setSelectedPlatformOwner] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingSellers, setLoadingSellers] = useState(true);
@@ -282,20 +275,6 @@ export default function AdminProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [createFormData, setCreateFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    price: "",
-    stock: "",
-    weight: "",
-    featuredImage: "",
-    galleryImages: "",
-    tags: "",
-    artistName: "",
-    featured: false,
-  });
 
   const editFeaturedImageRef = useRef<HTMLInputElement>(null);
   const editGalleryImagesRef = useRef<HTMLInputElement>(null);
@@ -462,22 +441,6 @@ export default function AdminProductsPage() {
         .filter((u: any) => u.role === "SELLER")
         .map((u: any) => ({ ...u, pendingCount: 0 }));
       setSellers(rawSellers);
-      try {
-        const ownerRes = await api.get("/api/admin/sellers?status=ACTIVE");
-        const owners: PlatformOwner[] = (ownerRes?.sellers || [])
-          .filter((seller: any) => seller.paymentAccountType === "PLATFORM" && seller.isActive !== false && seller.sellerId)
-          .map((seller: any) => ({
-            id: seller.sellerId,
-            name: seller.storeName || seller.businessName || seller.contactPerson || seller.email || "ALPA Platform",
-            email: seller.email || "",
-          }));
-        setPlatformOwners(owners);
-        setSelectedPlatformOwner((current) => (current && owners.some((owner) => owner.id === current) ? current : owners[0]?.id || ""));
-      } catch (ownerErr) {
-        console.error("Failed to load platform owners:", ownerErr);
-        setPlatformOwners([]);
-        setSelectedPlatformOwner("");
-      }
       const saved = typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_selectedSeller") : null;
       const validSaved = saved && rawSellers.some((s) => s.id === saved);
       if (!selectedSellerRef.current && rawSellers.length > 0) {
@@ -578,65 +541,6 @@ export default function AdminProductsPage() {
   }, [activeView]); // eslint-disable-line
 
   // ── edit modal ─────────────────────────────────────────────────────────────
-  const handleCreatePlatformProduct = async () => {
-    if (!selectedPlatformOwner) {
-      toast.error("No active ALPA platform owner is available.");
-      return;
-    }
-    if (!createFormData.title.trim() || !createFormData.category.trim() || !createFormData.price || !createFormData.weight) {
-      toast.error("Product name, category, price, and weight are required.");
-      return;
-    }
-
-    try {
-      setCreateSubmitting(true);
-      const galleryImages = createFormData.galleryImages
-        .split("\n")
-        .map((url) => url.trim())
-        .filter(Boolean);
-
-      await api.post("/api/admin/products/create", {
-        sellerId: selectedPlatformOwner,
-        title: createFormData.title.trim(),
-        description: createFormData.description.trim(),
-        category: createFormData.category.trim(),
-        price: Number(createFormData.price),
-        stock: createFormData.stock ? Number(createFormData.stock) : 0,
-        weight: Number(createFormData.weight),
-        featuredImage: createFormData.featuredImage.trim() || galleryImages[0] || null,
-        galleryImages,
-        tags: createFormData.tags,
-        artistName: createFormData.artistName.trim(),
-        featured: createFormData.featured,
-        type: "SIMPLE",
-      });
-
-      toast.success("Platform product created as Pending.");
-      setShowCreateModal(false);
-      setCreateFormData({
-        title: "",
-        description: "",
-        category: "",
-        price: "",
-        stock: "",
-        weight: "",
-        featuredImage: "",
-        galleryImages: "",
-        tags: "",
-        artistName: "",
-        featured: false,
-      });
-      fetchedTabsRef.current = new Set();
-      setActiveView("pending");
-      await refreshPending(sellersRef.current);
-      fetchTabProducts(selectedSellerRef.current, "pending");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create platform product");
-    } finally {
-      setCreateSubmitting(false);
-    }
-  };
-
   const openEditModal = async (productId: string) => {
     setEditProductId(productId);
     setEditSubmitting(false);
@@ -1010,7 +914,7 @@ export default function AdminProductsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 items-end w-full md:w-auto md:justify-end">
-          <Button className="h-10 gap-2" onClick={() => setShowCreateModal(true)} disabled={loadingSellers || platformOwners.length === 0}>
+          <Button className="h-10 gap-2" onClick={() => setShowCreateModal(true)} disabled={loadingSellers}>
             <Plus className="h-4 w-4" />
             Add Product
           </Button>
@@ -1562,163 +1466,26 @@ export default function AdminProductsPage() {
       </>)} {/* end activeView !== "recycle-bin" */}
 
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] min-h-0 overflow-hidden p-0 gap-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b shrink-0">
             <DialogTitle>Create ALPA Platform Product</DialogTitle>
             <DialogDescription>
-              Creates a pending product for the selected ALPA platform owner. Existing approval controls publish it.
+              Creates a pending ALPA platform-owned product. Existing approval controls publish it.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            <div className="rounded-md border bg-muted/30 p-3 text-sm">
-              <Label className="text-xs text-muted-foreground">Owner</Label>
-              {platformOwners.length > 1 ? (
-                <Select value={selectedPlatformOwner} onValueChange={setSelectedPlatformOwner}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select ALPA platform owner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {platformOwners.map((owner) => (
-                      <SelectItem key={owner.id} value={owner.id}>
-                        {owner.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="font-medium">
-                  {platformOwners[0]?.name || "No active ALPA platform owner available"}
-                </p>
-              )}
-            </div>
+          <ProductCreateForm
+            mode="PLATFORM_ADMIN"
+            onCancel={() => setShowCreateModal(false)}
+            onSuccess={async () => {
+              setShowCreateModal(false);
+              fetchedTabsRef.current = new Set();
+              setActiveView("pending");
+              await refreshPending(sellersRef.current);
+              fetchTabProducts(selectedSellerRef.current, "pending");
+            }}
+          />
 
-            <div className="grid gap-2">
-              <Label>Product name</Label>
-              <Input
-                value={createFormData.title}
-                onChange={(e) => setCreateFormData((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Product name"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Textarea
-                value={createFormData.description}
-                onChange={(e) => setCreateFormData((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Product description"
-                rows={4}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Category</Label>
-              <Select
-                value={createFormData.category}
-                onValueChange={(value) => setCreateFormData((prev) => ({ ...prev, category: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCategories.map((cat: any) => (
-                    <SelectItem key={cat.id || cat.categoryName} value={cat.categoryName}>
-                      {cat.categoryName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label>Price</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={createFormData.price}
-                  onChange={(e) => setCreateFormData((prev) => ({ ...prev, price: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Stock</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={createFormData.stock}
-                  onChange={(e) => setCreateFormData((prev) => ({ ...prev, stock: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Weight kg</Label>
-                <Input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={createFormData.weight}
-                  onChange={(e) => setCreateFormData((prev) => ({ ...prev, weight: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Featured image URL</Label>
-              <Input
-                value={createFormData.featuredImage}
-                onChange={(e) => setCreateFormData((prev) => ({ ...prev, featuredImage: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Gallery image URLs</Label>
-              <Textarea
-                value={createFormData.galleryImages}
-                onChange={(e) => setCreateFormData((prev) => ({ ...prev, galleryImages: e.target.value }))}
-                placeholder="One image URL per line"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Artist name</Label>
-                <Input
-                  value={createFormData.artistName}
-                  onChange={(e) => setCreateFormData((prev) => ({ ...prev, artistName: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Tags</Label>
-                <Input
-                  value={createFormData.tags}
-                  onChange={(e) => setCreateFormData((prev) => ({ ...prev, tags: e.target.value }))}
-                  placeholder="comma, separated, tags"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <Label>Featured product</Label>
-              <Switch
-                checked={createFormData.featured}
-                onCheckedChange={(checked) => setCreateFormData((prev) => ({ ...prev, featured: checked }))}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={createSubmitting}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreatePlatformProduct} disabled={createSubmitting}>
-              {createSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Pending Product
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

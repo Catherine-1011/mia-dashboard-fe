@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useRouter } from "next/navigation";
 import { ProductAuditHistory } from "@/components/shared/product-audit-history";
 import { ImageCropModal } from "@/components/shared/image-crop-modal";
+import { ProductCreateForm } from "@/components/products/ProductCreateForm";
 
 // --- CONFIGURATION ---
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
@@ -2567,7 +2568,24 @@ function ProjectsPage() {
             );
             })()}
       {/* Add Product Modal */}
-      <Sheet open={showAddModal} onOpenChange={(open) => { if (!open) closeAddModal(); }}>
+      <Sheet open={showAddModal} onOpenChange={(open) => { if (!open) setShowAddModal(false); }}>
+        <SheetContent side="right" className="w-full sm:max-w-5xl h-dvh max-h-dvh min-h-0 flex flex-col p-0 gap-0 overflow-hidden" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <SheetHeader className="px-6 py-4 border-b shrink-0">
+            <SheetTitle className="text-xl font-bold">Add New Product</SheetTitle>
+          </SheetHeader>
+          <ProductCreateForm
+            mode="SELLER"
+            onCancel={() => setShowAddModal(false)}
+            onSuccess={async () => {
+              setShowAddModal(false);
+              await loadProducts();
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Legacy Add Product Modal (inactive; shared ProductCreateForm is used above) */}
+      <Sheet open={false} onOpenChange={(open) => { if (!open) closeAddModal(); }}>
         <SheetContent side="right" className={cn("w-full flex flex-col p-0 gap-0 overflow-hidden transition-all duration-300", formData.type === "VARIABLE" ? "sm:max-w-5xl" : "sm:max-w-xl")} onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
           <SheetHeader className="px-6 py-4 border-b shrink-0">
             <SheetTitle className="text-xl font-bold">Add New Product</SheetTitle>

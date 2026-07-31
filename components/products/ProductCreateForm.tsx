@@ -54,7 +54,29 @@ const postProduct = async (
   const token = getAuthToken();
   if (!token) throw new Error("No authentication token found. Please log in.");
 
+  const uploadImage = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+
+    const response = await fetch(`${BASE_URL}/api/upload/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const data = await response.json().catch(() => ({}));
+    const url = data.url ?? data.secure_url ?? data.imageUrl ?? data.data?.url ?? null;
+    if (!response.ok || !url) {
+      throw new Error(data.message || data.error || "Image upload failed");
+    }
+    return url as string;
+  };
+
   if (mode === "PLATFORM_ADMIN") {
+    const [featuredImageUrl, galleryImageUrls] = await Promise.all([
+      productData.featuredImage ? uploadImage(productData.featuredImage) : Promise.resolve(null),
+      Promise.all(productData.galleryImages.map(uploadImage)),
+    ]);
+
     const response = await fetch(`${BASE_URL}/api/admin/products/create`, {
       method: "POST",
       headers: {
@@ -68,8 +90,8 @@ const postProduct = async (
         price: Number(productData.price),
         stock: productData.stock ? Number(productData.stock) : 0,
         weight: Number(productData.weight),
-        featuredImage: null,
-        galleryImages: [],
+        featuredImage: featuredImageUrl,
+        galleryImages: galleryImageUrls,
         tags: productData.tags,
         artistName: productData.artistName.trim(),
         featured: productData.featured,

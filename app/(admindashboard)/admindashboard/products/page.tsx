@@ -16,6 +16,7 @@ import { Loader2, Image as LucideImage } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import NextImage from "next/image";
 import { api, apiClient } from "@/lib/api";
+import { decodeJWT } from "@/lib/jwt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -188,6 +189,8 @@ type RecycleBinProduct = {
 
 export default function AdminProductsPage() {
   const router = useRouter();
+  const [authenticatedRole, setAuthenticatedRole] = useState<string | null>(null);
+  const canModerateProducts = authenticatedRole === "SUPER_ADMIN";
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
@@ -196,7 +199,11 @@ export default function AdminProductsPage() {
       const roleMatch = document.cookie.match(/(?:^|; )userRole=([^;]*)/);
       if (!tokenMatch || !roleMatch) {
         window.location.href = "/auth/login";
+        return;
       }
+      const token = localStorage.getItem("alpa_token") || decodeURIComponent(tokenMatch[1]);
+      const decoded = token ? decodeJWT(token) : null;
+      setAuthenticatedRole(typeof decoded?.role === "string" ? decoded.role : null);
     }
   }, []);
 
@@ -752,7 +759,7 @@ export default function AdminProductsPage() {
         });
       }
 
-      if (wasRejected) {
+      if (wasRejected && canModerateProducts) {
         await api.post(`/api/admin/products/approve/${editProductId}`);
         if (editFormData.type === "SIMPLE" && stockNum <= 2) {
           await api.put(`/api/admin/products/deactivate/${editProductId}`, { reason: "Auto-deactivated due to low stock (≤ 2 units). Please update stock to re-activate." });
@@ -760,6 +767,8 @@ export default function AdminProductsPage() {
         } else {
           toast.success("Product approved and is now Active.", { duration: 5000 });
         }
+      } else if (wasRejected) {
+        toast.success(`"${editFormData.title.trim()}" updated successfully. Product approval actions are available to Super Admins only.`, { duration: 7000 });
       } else {
         toast.success(`"${editFormData.title.trim()}" updated successfully!`, { duration: 5000 });
       }
@@ -781,6 +790,10 @@ export default function AdminProductsPage() {
 
   // ── approve / reject / inactivate / activate ──────────────────────────────
   const openAdminDeactivateModal = (productId: string) => {
+    if (!canModerateProducts) {
+      toast.error("Product approval actions are available to Super Admins only.");
+      return;
+    }
     setAdminDeactivateProductId(productId);
     setAdminDeactivateReason("");
     setShowAdminDeactivateModal(true);
@@ -809,6 +822,10 @@ export default function AdminProductsPage() {
   };
 
   const handleActivate = async (productId: string) => {
+    if (!canModerateProducts) {
+      toast.error("Product approval actions are available to Super Admins only.");
+      return;
+    }
     try {
       await api.put(`/api/admin/products/activate/${productId}`);
       toast.success("Product activated successfully!");
@@ -822,6 +839,10 @@ export default function AdminProductsPage() {
   const [approveSubmittingId, setApproveSubmittingId] = useState<string | null>(null);
 
   const handleApproveProduct = async (productId: string) => {
+    if (!canModerateProducts) {
+      toast.error("Product approval actions are available to Super Admins only.");
+      return;
+    }
     try {
       setApproveSubmittingId(productId);
       await api.post(`/api/admin/products/approve/${productId}`);
@@ -837,6 +858,10 @@ export default function AdminProductsPage() {
   };
 
   const openRejectModal = (productId: string) => {
+    if (!canModerateProducts) {
+      toast.error("Product approval actions are available to Super Admins only.");
+      return;
+    }
     setRejectProductId(productId);
     setRejectReason("");
     setShowRejectModal(true);
@@ -1147,6 +1172,12 @@ export default function AdminProductsPage() {
         </div>
       )}
 
+      {activeView !== "recycle-bin" && !canModerateProducts && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Product approval actions are available to Super Admins only.
+        </div>
+      )}
+
       {/* ── Recycle Bin Tab ─────────────────────────────────────────────────── */}
       {activeView === "recycle-bin" && (
         <div className="space-y-4">
@@ -1429,6 +1460,7 @@ export default function AdminProductsPage() {
                             <Button variant="outline" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleSoftDeleteProduct(product.id)} title="Move to Recycle Bin">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
+                            {canModerateProducts && (
                             <div className="flex items-center gap-1.5 px-2">
                               <Switch
                                 checked={product.status === "ACTIVE"}
@@ -1442,14 +1474,19 @@ export default function AdminProductsPage() {
                                 {product.status === "INACTIVE" ? ((product.stock ?? 0) <= 2 ? "Low Stock" : "Inactive") : "Active"}
                               </span>
                             </div>
+                            )}
                           </>
                         ) : product.status === "PENDING" ? (
                           <>
+                            {canModerateProducts && (
+                            <>
                             <Button variant="outline" size="sm" className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleApproveProduct(product.id)} disabled={approveSubmittingId === product.id}>
                               {approveSubmittingId === product.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
                               Approve
                             </Button>
                             <Button variant="outline" size="sm" className="gap-1 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => openRejectModal(product.id)}><XCircle className="h-3 w-3" />Reject</Button>
+                            </>
+                            )}
                             <Button variant="outline" size="sm" className="gap-1"
                               onClick={() => router.push(`/admindashboard/products/${product.id}`)}
                               title="View">
@@ -1626,7 +1663,7 @@ export default function AdminProductsPage() {
       )}
 
       {/* Reject Modal */}
-      {showRejectModal && (
+      {canModerateProducts && showRejectModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md shadow-2xl">
             <CardHeader className="border-b">
@@ -1673,7 +1710,11 @@ export default function AdminProductsPage() {
             {editProductStatus === "REJECTED" ? (
               <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg text-xs bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300">
                 <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                <span>This product was rejected. Saving will auto-approve it and make it Active.</span>
+                <span>
+                  {canModerateProducts
+                    ? "This product was rejected. Saving will auto-approve it and make it Active."
+                    : "This product was rejected. Product approval and rejection actions are available to Super Admins only."}
+                </span>
               </div>
             ) : null}
           </SheetHeader>

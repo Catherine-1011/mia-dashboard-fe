@@ -50,11 +50,48 @@ type Product = {
   tags?: string[] | string;
   seller_id?: string;
   sellerId?: string;
+  sellerName?: string;
   userId?: string;
+  creatorId?: string | null;
+  ownerType?: "SELLER" | "PLATFORM";
+  platformAccountId?: string | null;
+  platformDisplayName?: string | null;
+  ownership?: {
+    type: "SELLER" | "PLATFORM";
+    creatorId?: string | null;
+    platformAccountId?: string | null;
+    displayName?: string | null;
+  };
   weight?: number | string;
   seller?: { id: string; name: string; email: string; storeName?: string; businessName?: string };
   type?: "SIMPLE" | "VARIABLE";
   variants?: Array<{ price?: number | string; stock?: number | string; sku?: string }>;
+};
+
+type OwnerScope =
+  | { type: "ALL" }
+  | { type: "PLATFORM" }
+  | { type: "SELLER"; sellerId: string };
+
+const ALL_OWNERS_VALUE = "all";
+const PLATFORM_OWNER_VALUE = "platform";
+const sellerOwnerValue = (sellerId: string) => `seller:${sellerId}`;
+const parseOwnerScope = (value: string): OwnerScope => {
+  if (value === PLATFORM_OWNER_VALUE) return { type: "PLATFORM" };
+  if (value.startsWith("seller:")) return { type: "SELLER", sellerId: value.slice("seller:".length) };
+  return { type: "ALL" };
+};
+const buildOwnerQuery = (scopeValue: string) => {
+  const scope = parseOwnerScope(scopeValue);
+  if (scope.type === "PLATFORM") return "&ownerType=PLATFORM";
+  if (scope.type === "SELLER") return `&sellerId=${encodeURIComponent(scope.sellerId)}`;
+  return "";
+};
+const getOwnerDisplayName = (product: Pick<Product, "ownerType" | "platformDisplayName" | "ownership" | "seller" | "sellerName">) => {
+  if (product.ownerType === "PLATFORM" || product.ownership?.type === "PLATFORM") {
+    return product.ownership?.displayName || product.platformDisplayName || "ALPA Platform";
+  }
+  return product.ownership?.displayName || product.seller?.storeName || product.seller?.businessName || product.seller?.name || product.sellerName || "External Seller";
 };
 
 type TabCounts = { all: number; pending: number; approved: number; rejected: number; inactive: number };
@@ -137,6 +174,16 @@ type RecycleBinProduct = {
   seller?: { id: string; name: string; email: string };
   sellerId?: string;
   sellerName?: string;
+  creatorId?: string | null;
+  ownerType?: "SELLER" | "PLATFORM";
+  platformAccountId?: string | null;
+  platformDisplayName?: string | null;
+  ownership?: {
+    type: "SELLER" | "PLATFORM";
+    creatorId?: string | null;
+    platformAccountId?: string | null;
+    displayName?: string | null;
+  };
 };
 
 export default function AdminProductsPage() {
@@ -154,8 +201,8 @@ export default function AdminProductsPage() {
   }, []);
 
   const [sellers, setSellers] = useState<Seller[]>([]);
-  const [selectedSeller, setSelectedSeller] = useState<string>(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_selectedSeller") ?? "" : "")
+  const [selectedOwnerScope, setSelectedOwnerScope] = useState<string>(
+    () => (typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_ownerScope") ?? ALL_OWNERS_VALUE : ALL_OWNERS_VALUE)
   );
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -328,13 +375,13 @@ export default function AdminProductsPage() {
   // Mutable accumulator ref for gallery files — always current, no stale closure
   const editGalleryAccumRef = useRef<File[]>([]);
 
-  const selectedSellerRef = useRef(selectedSeller);
+  const selectedOwnerScopeRef = useRef(selectedOwnerScope);
   const activeViewRef = useRef(activeView);
   const sellersRef = useRef<Seller[]>([]);
   useEffect(() => {
-    selectedSellerRef.current = selectedSeller;
-    if (selectedSeller) sessionStorage.setItem("adminProducts_selectedSeller", selectedSeller);
-  }, [selectedSeller]);
+    selectedOwnerScopeRef.current = selectedOwnerScope;
+    sessionStorage.setItem("adminProducts_ownerScope", selectedOwnerScope);
+  }, [selectedOwnerScope]);
   useEffect(() => { activeViewRef.current = activeView; }, [activeView]);
   useEffect(() => { sellersRef.current = sellers; }, [sellers]);
 
@@ -381,11 +428,11 @@ export default function AdminProductsPage() {
 
   // ── unified tab fetch (uses new endpoint) ────────────────────────────────
   const fetchTabProducts = async (
-    sellerId: string,
+    ownerScopeValue: string,
     status: "all" | "approved" | "pending" | "rejected" | "inactive" | "recycle-bin"
   ) => {
     if (status === "recycle-bin") {
-      fetchRecycleBin(sellerId);
+      fetchRecycleBin(ownerScopeValue);
       return;
     }
     const setLoadingMap: Record<string, (v: boolean) => void> = {
@@ -398,7 +445,7 @@ export default function AdminProductsPage() {
     };
     setLoadingMap[status](true);
     try {
-      const qs = `?status=${status}${sellerId ? `&sellerId=${encodeURIComponent(sellerId)}` : ""}`;
+      const qs = `?status=${status}${buildOwnerQuery(ownerScopeValue)}`;
       const res = await api.get(`/api/admin/products${qs}`);
       const data: Product[] = res?.products || [];
       setDataMap[status](data);
@@ -441,10 +488,16 @@ export default function AdminProductsPage() {
         .filter((u: any) => u.role === "SELLER")
         .map((u: any) => ({ ...u, pendingCount: 0 }));
       setSellers(rawSellers);
-      const saved = typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_selectedSeller") : null;
-      const validSaved = saved && rawSellers.some((s) => s.id === saved);
-      if (!selectedSellerRef.current && rawSellers.length > 0) {
-        setSelectedSeller(validSaved ? saved! : rawSellers[0].id);
+      const saved = typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_ownerScope") : null;
+      const legacySavedSeller = typeof window !== "undefined" ? sessionStorage.getItem("adminProducts_selectedSeller") : null;
+      const savedSellerId = saved?.startsWith("seller:") ? saved.slice("seller:".length) : legacySavedSeller;
+      const validSavedSeller = savedSellerId && rawSellers.some((s) => s.id === savedSellerId);
+      if (saved === PLATFORM_OWNER_VALUE || saved === ALL_OWNERS_VALUE) {
+        setSelectedOwnerScope(saved);
+      } else if (validSavedSeller) {
+        setSelectedOwnerScope(sellerOwnerValue(savedSellerId!));
+      } else {
+        setSelectedOwnerScope(ALL_OWNERS_VALUE);
       }
       await refreshPending(rawSellers);
     } catch (err: any) {
@@ -456,16 +509,17 @@ export default function AdminProductsPage() {
   };
 
   // Thin wrappers kept for call-site compatibility
-  const fetchProducts = (sellerId: string) => fetchTabProducts(sellerId, "approved");
-  const applyPendingFilter = (sellerId: string) => fetchTabProducts(sellerId, "pending");
-  const fetchAllProducts = (sellerId: string) => fetchTabProducts(sellerId, "all");
-  const applyRejectedFilter = (sellerId: string) => fetchTabProducts(sellerId, "rejected");
-  const fetchInactiveProducts = (sellerId: string) => fetchTabProducts(sellerId, "inactive");
+  const fetchProducts = (ownerScopeValue: string) => fetchTabProducts(ownerScopeValue, "approved");
+  const applyPendingFilter = (ownerScopeValue: string) => fetchTabProducts(ownerScopeValue, "pending");
+  const fetchAllProducts = (ownerScopeValue: string) => fetchTabProducts(ownerScopeValue, "all");
+  const applyRejectedFilter = (ownerScopeValue: string) => fetchTabProducts(ownerScopeValue, "rejected");
+  const fetchInactiveProducts = (ownerScopeValue: string) => fetchTabProducts(ownerScopeValue, "inactive");
 
-  const fetchRecycleBin = async (sellerId: string) => {
+  const fetchRecycleBin = async (ownerScopeValue: string) => {
     setLoadingRecycleBin(true);
     try {
-      const qs = sellerId ? `?sellerId=${encodeURIComponent(sellerId)}` : "";
+      const ownerQuery = buildOwnerQuery(ownerScopeValue);
+      const qs = ownerQuery ? `?${ownerQuery.slice(1)}` : "";
       const res = await api.get(`/api/admin/products/recycle-bin${qs}`);
       setRecycleBinProducts(res?.products || []);
     } catch (err: any) {
@@ -494,7 +548,7 @@ export default function AdminProductsPage() {
 
   // ── When the selected SELLER changes: wipe everything and fetch the active tab fresh ──
   useEffect(() => {
-    if (!selectedSeller) {
+    if (!selectedOwnerScope) {
       setProducts([]); setPendingProducts([]); setAllProducts([]);
       setRejectedProducts([]); setInactiveProducts([]);
       setTabCounts({ all: 0, pending: 0, approved: 0, rejected: 0, inactive: 0 });
@@ -512,20 +566,20 @@ export default function AdminProductsPage() {
     setTabCounts({ all: 0, pending: 0, approved: 0, rejected: 0, inactive: 0 });
     fetchedTabsRef.current.add(activeView);
     if (activeView === "recycle-bin") {
-      fetchRecycleBin(selectedSeller);
+      fetchRecycleBin(selectedOwnerScope);
     } else {
-      fetchTabProducts(selectedSeller, activeView);
+      fetchTabProducts(selectedOwnerScope, activeView);
     }
     // Always fetch recycle bin count eagerly so the badge shows immediately
     if (activeView !== "recycle-bin") {
-      fetchRecycleBin(selectedSeller);
+      fetchRecycleBin(selectedOwnerScope);
     }
     setCurrentPage(1);
-  }, [selectedSeller]); // eslint-disable-line
+  }, [selectedOwnerScope]); // eslint-disable-line
 
   // ── When the active TAB changes: only fetch if not already loaded for this seller ──
   useEffect(() => {
-    if (!selectedSeller) return;
+    if (!selectedOwnerScope) return;
     if (fetchedTabsRef.current.has(activeView)) {
       // Data already in state — just reset pagination, no refetch, no flash
       setCurrentPage(1);
@@ -533,9 +587,9 @@ export default function AdminProductsPage() {
     }
     fetchedTabsRef.current.add(activeView);
     if (activeView === "recycle-bin") {
-      fetchRecycleBin(selectedSeller);
+      fetchRecycleBin(selectedOwnerScope);
     } else {
-      fetchTabProducts(selectedSeller, activeView);
+      fetchTabProducts(selectedOwnerScope, activeView);
     }
     setCurrentPage(1);
   }, [activeView]); // eslint-disable-line
@@ -717,7 +771,7 @@ export default function AdminProductsPage() {
       setEditVariants([]);
       setEditSelectedAttrValues({});
       fetchedTabsRef.current = new Set();
-      fetchTabProducts(selectedSellerRef.current, activeViewRef.current);
+      fetchTabProducts(selectedOwnerScopeRef.current, activeViewRef.current);
     } catch (err: any) {
       toast.error(err.message || "Failed to update product");
     } finally {
@@ -746,7 +800,7 @@ export default function AdminProductsPage() {
       setAdminDeactivateProductId(null);
       setAdminDeactivateReason("");
       fetchedTabsRef.current = new Set([activeViewRef.current]);
-      fetchTabProducts(selectedSellerRef.current, activeViewRef.current);
+      fetchTabProducts(selectedOwnerScopeRef.current, activeViewRef.current);
     } catch (err: any) {
       toast.error(err?.message || "Failed to deactivate product");
     } finally {
@@ -759,7 +813,7 @@ export default function AdminProductsPage() {
       await api.put(`/api/admin/products/activate/${productId}`);
       toast.success("Product activated successfully!");
       fetchedTabsRef.current = new Set([activeViewRef.current]);
-      fetchTabProducts(selectedSellerRef.current, activeViewRef.current);
+      fetchTabProducts(selectedOwnerScopeRef.current, activeViewRef.current);
     } catch {
       toast.error("Failed to activate product");
     }
@@ -774,7 +828,7 @@ export default function AdminProductsPage() {
       toast.success("Product approved successfully!");
       await refreshPending(sellersRef.current);
       fetchedTabsRef.current = new Set([activeViewRef.current]);
-      fetchTabProducts(selectedSellerRef.current, activeViewRef.current);
+      fetchTabProducts(selectedOwnerScopeRef.current, activeViewRef.current);
     } catch (err: any) {
       toast.error(err.message || "Failed to approve product");
     } finally {
@@ -803,7 +857,7 @@ export default function AdminProductsPage() {
       setRejectReason("");
       await refreshPending(sellersRef.current);
       fetchedTabsRef.current = new Set([activeViewRef.current]);
-      fetchTabProducts(selectedSellerRef.current, activeViewRef.current);
+      fetchTabProducts(selectedOwnerScopeRef.current, activeViewRef.current);
     } catch (err: any) {
       toast.error(err.message || "Failed to reject product");
     } finally {
@@ -817,7 +871,7 @@ export default function AdminProductsPage() {
     try {
       await api.post(`/api/admin/products/${product.id}/restore`);
       toast.success(`"${product.title}" restored. Set it to Active when ready.`);
-      fetchRecycleBin(selectedSeller);
+      fetchRecycleBin(selectedOwnerScope);
     } catch (err: any) {
       toast.error(err?.message || "Failed to restore product");
     } finally {
@@ -841,7 +895,7 @@ export default function AdminProductsPage() {
       toast.success(`"${deleteTarget.title}" permanently deleted.`);
       setDeleteTarget(null);
       setDeleteReason("");
-      fetchRecycleBin(selectedSeller);
+      fetchRecycleBin(selectedOwnerScope);
     } catch (err: any) {
       toast.error(err?.message || "Failed to permanently delete product");
     } finally {
@@ -854,8 +908,8 @@ export default function AdminProductsPage() {
     try {
       await apiClient(`/api/admin/products/${productId}`, { method: "DELETE" });
       toast.success("Product moved to recycle bin");
-      fetchProducts(selectedSeller);
-      fetchRecycleBin(selectedSeller);
+      fetchProducts(selectedOwnerScope);
+      fetchRecycleBin(selectedOwnerScope);
     } catch (err: any) {
       toast.error(err?.message || "Failed to move product to recycle bin");
     }
@@ -949,21 +1003,24 @@ export default function AdminProductsPage() {
 
           {/* Seller Dropdown */}
           <div className="min-w-[260px] relative" ref={sellerDropdownRef}>
-            <label className="block mb-1 font-medium">Select Seller</label>
+            <label className="block mb-1 font-medium">Owner</label>
             <div
               className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm hover:border-primary/50 cursor-pointer"
               onClick={() => setIsSellerDropdownOpen((v) => !v)}
             >
-              <span className={selectedSeller ? "text-foreground font-medium" : "text-muted-foreground"}>
-                {selectedSeller ? (() => {
-                  const s = sellers.find((s) => s.id === selectedSeller);
-                  if (!s) return "Select a seller";
+              <span className={selectedOwnerScope ? "text-foreground font-medium" : "text-muted-foreground"}>
+                {(() => {
+                  const scope = parseOwnerScope(selectedOwnerScope);
+                  if (scope.type === "ALL") return "All Owners";
+                  if (scope.type === "PLATFORM") return "ALPA Platform";
+                  const s = sellers.find((s) => s.id === scope.sellerId);
+                  if (!s) return "Select owner";
                   return (
                     <span className="flex items-center gap-2">
                       {s.name} <PendingPill count={s.pendingCount} />
                     </span>
                   );
-                })() : "Select a seller"}
+                })()}
               </span>
               <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform duration-200", isSellerDropdownOpen && "rotate-180")} />
             </div>
@@ -973,22 +1030,52 @@ export default function AdminProductsPage() {
                 <div className="max-h-[300px] overflow-y-auto">
                   {loadingSellers ? (
                     <div className="py-6 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-                  ) : sellers.length === 0 ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground">No sellers found.</div>
-                  ) : sellers.map((seller) => (
+                  ) : (
+                    <>
+                    <div
+                      className={cn(
+                        "flex cursor-pointer select-none items-center rounded-md px-3 py-2.5 text-sm transition-colors hover:bg-primary/5 hover:text-primary",
+                        selectedOwnerScope === ALL_OWNERS_VALUE && "bg-primary/5 text-primary font-medium"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); setSelectedOwnerScope(ALL_OWNERS_VALUE); setIsSellerDropdownOpen(false); }}
+                    >
+                      <div className={cn(
+                        "mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-primary transition-all",
+                        selectedOwnerScope === ALL_OWNERS_VALUE ? "bg-primary text-primary-foreground" : "bg-transparent opacity-50"
+                      )}>
+                        {selectedOwnerScope === ALL_OWNERS_VALUE && <Check className="h-3 w-3" />}
+                      </div>
+                      <div className="font-medium">All Owners</div>
+                    </div>
+                    <div
+                      className={cn(
+                        "flex cursor-pointer select-none items-center rounded-md px-3 py-2.5 text-sm transition-colors hover:bg-primary/5 hover:text-primary",
+                        selectedOwnerScope === PLATFORM_OWNER_VALUE && "bg-primary/5 text-primary font-medium"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); setSelectedOwnerScope(PLATFORM_OWNER_VALUE); setIsSellerDropdownOpen(false); }}
+                    >
+                      <div className={cn(
+                        "mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-primary transition-all",
+                        selectedOwnerScope === PLATFORM_OWNER_VALUE ? "bg-primary text-primary-foreground" : "bg-transparent opacity-50"
+                      )}>
+                        {selectedOwnerScope === PLATFORM_OWNER_VALUE && <Check className="h-3 w-3" />}
+                      </div>
+                      <div className="font-medium">ALPA Platform</div>
+                    </div>
+                    {sellers.map((seller) => (
                     <div
                       key={seller.id}
                       className={cn(
                         "flex cursor-pointer select-none items-center rounded-md px-3 py-2.5 text-sm transition-colors hover:bg-primary/5 hover:text-primary",
-                        selectedSeller === seller.id && "bg-primary/5 text-primary font-medium"
+                        selectedOwnerScope === sellerOwnerValue(seller.id) && "bg-primary/5 text-primary font-medium"
                       )}
-                      onClick={(e) => { e.stopPropagation(); setSelectedSeller(seller.id); setIsSellerDropdownOpen(false); }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedOwnerScope(sellerOwnerValue(seller.id)); setIsSellerDropdownOpen(false); }}
                     >
                       <div className={cn(
                         "mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-primary transition-all",
-                        selectedSeller === seller.id ? "bg-primary text-primary-foreground" : "bg-transparent opacity-50"
+                        selectedOwnerScope === sellerOwnerValue(seller.id) ? "bg-primary text-primary-foreground" : "bg-transparent opacity-50"
                       )}>
-                        {selectedSeller === seller.id && <Check className="h-3 w-3" />}
+                        {selectedOwnerScope === sellerOwnerValue(seller.id) && <Check className="h-3 w-3" />}
                       </div>
                       <div className="flex flex-1 items-center justify-between min-w-0">
                         <div className="flex flex-col min-w-0 mr-3">
@@ -998,7 +1085,9 @@ export default function AdminProductsPage() {
                         <PendingPill count={seller.pendingCount} />
                       </div>
                     </div>
-                  ))}
+                    ))}
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1111,7 +1200,7 @@ export default function AdminProductsPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
                 <Trash2 className="h-12 w-12 text-muted-foreground/25" />
-                <p className="text-lg font-semibold text-muted-foreground">Recycle Bin is empty for this seller</p>
+                <p className="text-lg font-semibold text-muted-foreground">Recycle Bin is empty for this owner scope</p>
                 <p className="text-sm text-muted-foreground">No soft-deleted products found.</p>
               </CardContent>
             </Card>
@@ -1140,7 +1229,12 @@ export default function AdminProductsPage() {
                         <p className="text-xs text-muted-foreground">{product.category || "—"}</p>
                       </td>
                       <td className="px-4 py-2">
-                        {product.seller ? (
+                        {product.ownerType === "PLATFORM" || product.ownership?.type === "PLATFORM" ? (
+                          <div>
+                            <p className="text-sm font-medium">ALPA Platform</p>
+                            <p className="text-xs text-muted-foreground">Platform product</p>
+                          </div>
+                        ) : product.seller ? (
                           <div>
                             <p className="text-sm font-medium">{product.seller.name}</p>
                             <p className="text-xs text-muted-foreground">{product.seller.email}</p>
@@ -1296,9 +1390,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-4 py-2">
                       <p className="font-semibold">{product.title}</p>
-                      {product.seller && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{product.seller.name}</p>
-                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">{getOwnerDisplayName(product)}</p>
                       {product.rejectionReason && (
                         <p className="text-xs text-red-600 mt-0.5 line-clamp-2" title={product.rejectionReason}>
                           <AlertCircle className="inline h-3 w-3 mr-1 align-middle" />
@@ -1482,7 +1574,7 @@ export default function AdminProductsPage() {
               fetchedTabsRef.current = new Set();
               setActiveView("pending");
               await refreshPending(sellersRef.current);
-              fetchTabProducts(selectedSellerRef.current, "pending");
+              fetchTabProducts(selectedOwnerScopeRef.current, "pending");
             }}
           />
 

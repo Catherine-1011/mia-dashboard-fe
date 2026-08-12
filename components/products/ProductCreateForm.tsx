@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, Crop, DollarSign, Loader2, Package, Plus, Search, X } from "lucide-react";
+import { Check, Crop, DollarSign, Info, Loader2, Package, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,11 @@ type ProductCreateFormProps = {
 type ProductType = "SIMPLE" | "VARIABLE";
 type VariantRow = { price: string; stock: string; sku: string; attributes: Record<string, string> };
 type CropTarget = "featured" | "gallery";
+
+const PRODUCT_TYPE_INFO: Record<ProductType, string> = {
+  SIMPLE: "One product, one price, one stock count. Use this for items that don't come in different options (e.g. sizes or colors).",
+  VARIABLE: "One product with multiple options (e.g. Small/Medium/Large), each with its own price, stock, and SKU.",
+};
 
 const getAuthToken = () => {
   if (typeof window === "undefined") return null;
@@ -329,7 +334,7 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-5">
         <div className="space-y-2">
           <Label className="text-sm font-semibold">Product Type</Label>
           <div className="flex rounded-lg border p-1 bg-muted/20 gap-1">
@@ -337,75 +342,106 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
               <button
                 key={type}
                 type="button"
+                title={PRODUCT_TYPE_INFO[type]}
                 className={cn(
-                  "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all",
+                  "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all inline-flex items-center justify-center gap-1.5",
                   formData.type === type ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={() => setFormData((prev) => ({ ...prev, type }))}
               >
                 {type === "SIMPLE" ? "Simple Product" : "Variable Product"}
+                <Info className="h-3.5 w-3.5 opacity-50" />
               </button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground">
+            {PRODUCT_TYPE_INFO[formData.type]}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <Label htmlFor="title" className="text-sm font-semibold">Product Title <span className="text-red-500">*</span></Label>
-            <Input id="title" placeholder="Give your product a clear name" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} className="h-10" />
+        <div className="space-y-4 rounded-xl border bg-muted/10 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            Basic Details
           </div>
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <Label htmlFor="description" className="text-sm font-semibold">Detailed Description</Label>
-            <Textarea id="description" placeholder="Describe the features, materials, and benefits..." value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} rows={4} className="resize-none py-2" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 col-span-1 md:col-span-2">
+              <Label htmlFor="title" className="text-sm font-semibold">Product Title <span className="text-red-500">*</span></Label>
+              <Input id="title" placeholder="Give your product a clear name" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} className="h-10 bg-background" />
+            </div>
+            <div className="space-y-2 col-span-1 md:col-span-2">
+              <Label htmlFor="description" className="text-sm font-semibold">Detailed Description</Label>
+              <Textarea id="description" placeholder="Describe the features, materials, and benefits..." value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} rows={4} className="resize-none py-2 bg-background" />
+            </div>
+            <div className="space-y-2 col-span-1 md:col-span-2">
+              <Label htmlFor="artistName" className="text-sm font-semibold">Artist Name (Optional)</Label>
+              <Input id="artistName" placeholder="Enter artist name" value={formData.artistName} onChange={(event) => setFormData({ ...formData, artistName: event.target.value })} className="h-10 bg-background" />
+            </div>
           </div>
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <Label htmlFor="artistName" className="text-sm font-semibold">Artist Name (Optional)</Label>
-            <Input id="artistName" placeholder="Enter artist name" value={formData.artistName} onChange={(event) => setFormData({ ...formData, artistName: event.target.value })} className="h-10" />
-          </div>
+        </div>
 
-          {formData.type === "SIMPLE" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-sm font-semibold">Price ($) <span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="price" type="number" placeholder="0.00" value={formData.price} onChange={(event) => setFormData({ ...formData, price: event.target.value })} className="pl-9 h-10" />
+        <div className="space-y-4 rounded-xl border bg-muted/10 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            Pricing, Stock &amp; Category
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {formData.type === "SIMPLE" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="price" className="text-sm font-semibold">Price ($) <span className="text-red-500">*</span></Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="price" type="number" placeholder="0.00" value={formData.price} onChange={(event) => setFormData({ ...formData, price: event.target.value })} className="pl-9 h-10 bg-background" />
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock" className="text-sm font-semibold">Initial Stock <span className="text-red-500">*</span></Label>
-                <Input id="stock" type="number" placeholder="0" value={formData.stock} onChange={(event) => setFormData({ ...formData, stock: event.target.value })} className="h-10" />
-              </div>
-            </>
-          )}
+                <div className="space-y-2">
+                  <Label htmlFor="stock" className="text-sm font-semibold">Initial Stock <span className="text-red-500">*</span></Label>
+                  <Input id="stock" type="number" placeholder="0" value={formData.stock} onChange={(event) => setFormData({ ...formData, stock: event.target.value })} className="h-10 bg-background" />
+                </div>
+              </>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="weight" className="text-sm font-semibold">Weight (kg) <span className="text-red-500">*</span></Label>
-            <Input id="weight" type="number" placeholder="1" min="0" step="0.01" value={formData.weight} onChange={(event) => setFormData({ ...formData, weight: event.target.value })} className="h-10" />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-sm font-semibold">Weight (kg) <span className="text-red-500">*</span></Label>
+              <Input id="weight" type="number" placeholder="1" min="0" step="0.01" value={formData.weight} onChange={(event) => setFormData({ ...formData, weight: event.target.value })} className="h-10 bg-background" />
+            </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Category <span className="text-red-500">*</span></Label>
-            <div className="rounded-md border bg-background">
-              <div className="flex items-center border-b px-3">
-                <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                <input className="h-9 w-full bg-transparent text-sm outline-none" placeholder="Search categories..." value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} />
-              </div>
-              <div className="max-h-44 overflow-y-auto p-1">
-                {filteredCategories.map((category) => (
+            <div className={cn("space-y-2", formData.type === "VARIABLE" && "md:col-span-2")}>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Category <span className="text-red-500">*</span></Label>
+                {formData.category && (
                   <button
-                    key={category.categoryName}
                     type="button"
-                    className={cn("flex w-full items-center rounded-md px-3 py-2 text-sm hover:bg-primary/5", formData.category === category.categoryName && "bg-primary/5 text-primary font-medium")}
-                    onClick={() => setFormData({ ...formData, category: category.categoryName })}
+                    className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                    onClick={() => setFormData({ ...formData, category: "" })}
                   >
-                    <span className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded border border-primary", formData.category === category.categoryName ? "bg-primary text-primary-foreground" : "opacity-50")}>
-                      {formData.category === category.categoryName && <Check className="h-3 w-3" />}
-                    </span>
-                    {category.categoryName}
+                    <X className="h-3 w-3" />
+                    Clear
                   </button>
-                ))}
-                {filteredCategories.length === 0 && <div className="py-6 text-center text-sm text-muted-foreground">No category found.</div>}
+                )}
+              </div>
+              <div className="rounded-md border bg-background">
+                <div className="flex items-center border-b px-3">
+                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  <input className="h-9 w-full bg-transparent text-sm outline-none" placeholder="Search categories..." value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} />
+                </div>
+                <div className="max-h-44 overflow-y-auto p-1">
+                  {filteredCategories.map((category) => (
+                    <button
+                      key={category.categoryName}
+                      type="button"
+                      className={cn("flex w-full items-center rounded-md px-3 py-2 text-sm hover:bg-primary/5", formData.category === category.categoryName && "bg-primary/5 text-primary font-medium")}
+                      onClick={() => setFormData({ ...formData, category: category.categoryName })}
+                    >
+                      <span className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded border border-primary", formData.category === category.categoryName ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                        {formData.category === category.categoryName && <Check className="h-3 w-3" />}
+                      </span>
+                      {category.categoryName}
+                    </button>
+                  ))}
+                  {filteredCategories.length === 0 && <div className="py-6 text-center text-sm text-muted-foreground">No category found.</div>}
+                </div>
               </div>
             </div>
           </div>
@@ -415,22 +451,33 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
           <div className="space-y-3 rounded-xl border bg-muted/10 p-4">
             <Label className="text-sm font-semibold">Product Variants <span className="text-red-500">*</span></Label>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Input placeholder="Option, e.g. Small" value={newVariant.attributes.Option} onChange={(event) => setNewVariant((prev) => ({ ...prev, attributes: { Option: event.target.value } }))} />
-              <Input type="number" placeholder="Price" value={newVariant.price} onChange={(event) => setNewVariant((prev) => ({ ...prev, price: event.target.value }))} />
-              <Input type="number" placeholder="Stock" value={newVariant.stock} onChange={(event) => setNewVariant((prev) => ({ ...prev, stock: event.target.value }))} />
-              <Button type="button" variant="outline" onClick={addVariant}>Add Variant</Button>
+              <Input placeholder="Option, e.g. Small" value={newVariant.attributes.Option} onChange={(event) => setNewVariant((prev) => ({ ...prev, attributes: { Option: event.target.value } }))} className="bg-background" />
+              <Input type="number" placeholder="Price" value={newVariant.price} onChange={(event) => setNewVariant((prev) => ({ ...prev, price: event.target.value }))} className="bg-background" />
+              <Input type="number" placeholder="Stock" value={newVariant.stock} onChange={(event) => setNewVariant((prev) => ({ ...prev, stock: event.target.value }))} className="bg-background" />
+              <Button type="button" variant="outline" onClick={addVariant} className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Add Variant
+              </Button>
             </div>
-            {variants.length > 0 && (
+            {variants.length > 0 ? (
               <div className="overflow-x-auto rounded-md border bg-background">
                 <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/30 text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">Option</th>
+                      <th className="px-3 py-2 text-left font-medium">Price</th>
+                      <th className="px-3 py-2 text-left font-medium">Stock</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
                   <tbody className="divide-y">
                     {variants.map((variant, index) => (
-                      <tr key={`${variant.attributes.Option}-${index}`}>
+                      <tr key={`${variant.attributes.Option}-${index}`} className="hover:bg-muted/20">
                         <td className="px-3 py-2 font-medium">{variant.attributes.Option}</td>
                         <td className="px-3 py-2">${variant.price}</td>
                         <td className="px-3 py-2">{variant.stock} in stock</td>
                         <td className="px-3 py-2 text-right">
-                          <button type="button" className="text-red-500" onClick={() => setVariants((prev) => prev.filter((_, i) => i !== index))}>
+                          <button type="button" className="text-red-500 hover:text-red-600" onClick={() => setVariants((prev) => prev.filter((_, i) => i !== index))}>
                             <X className="h-4 w-4" />
                           </button>
                         </td>
@@ -439,13 +486,21 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
                   </tbody>
                 </table>
               </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-1">No variants added yet — add at least one option above.</p>
             )}
           </div>
         )}
 
-        <div className="space-y-3">
-          <Label className="text-sm font-semibold">Promotion Tags</Label>
-          <div className="flex flex-wrap gap-4 pt-1">
+        <div className="space-y-4 rounded-xl border bg-muted/10 p-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold">Promotion Tags</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="featured-switch" className="text-xs text-muted-foreground font-normal">Featured product</Label>
+              <Switch id="featured-switch" checked={formData.featured} onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {["New Arrival", "Sale", "Best Seller", "Limited Edition"].map((tag) => {
               const currentTags = formData.tags ? formData.tags.split(",").map((item) => item.trim()).filter(Boolean) : [];
               const checked = currentTags.includes(tag);
@@ -453,33 +508,28 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
                 <button
                   key={tag}
                   type="button"
-                  className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border transition-all", checked ? "bg-primary/10 border-primary text-primary" : "bg-muted/10 border-transparent")}
+                  className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all", checked ? "bg-primary/10 border-primary text-primary" : "bg-background border-border text-muted-foreground hover:text-foreground")}
                   onClick={() => {
                     const nextTags = checked ? currentTags.filter((item) => item !== tag) : [...currentTags, tag];
                     setFormData({ ...formData, tags: nextTags.join(", ") });
                   }}
                 >
-                  <span className={cn("flex h-4 w-4 items-center justify-center rounded border border-primary", checked ? "bg-primary text-primary-foreground" : "opacity-50")}>
-                    {checked && <Check className="h-3 w-3" />}
+                  <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded border border-primary", checked ? "bg-primary text-primary-foreground" : "opacity-40")}>
+                    {checked && <Check className="h-2.5 w-2.5" />}
                   </span>
-                  <span className="text-sm font-medium">{tag}</span>
+                  <span className="font-medium">{tag}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <Label>Featured product</Label>
-          <Switch checked={formData.featured} onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })} />
-        </div>
-
-        <div className="space-y-3 p-4 rounded-xl border border-dashed bg-muted/20">
+        <div className="space-y-3 p-4 rounded-xl border border-dashed bg-muted/10">
           <div className="flex items-center justify-between mb-1">
             <Label htmlFor="featuredImage" className="text-sm font-semibold">Featured Image</Label>
             <span className="text-[10px] text-muted-foreground">Main product image</span>
           </div>
-          <input ref={featuredInputRef} id="featuredImage" type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={handleFeaturedImageChange} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium" />
+          <input ref={featuredInputRef} id="featuredImage" type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" onChange={handleFeaturedImageChange} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-primary" />
           <div className="flex gap-3 flex-wrap pt-2">
             {formData.featuredImage ? (
               <div className="flex items-start gap-3">
@@ -505,12 +555,12 @@ export function ProductCreateForm({ mode, onCancel, onSuccess }: ProductCreateFo
           </div>
         </div>
 
-        <div className="space-y-3 p-4 rounded-xl border border-dashed bg-muted/20">
+        <div className="space-y-3 p-4 rounded-xl border border-dashed bg-muted/10">
           <div className="flex items-center justify-between mb-1">
             <Label htmlFor="galleryImages" className="text-sm font-semibold">Gallery Images</Label>
             <span className="text-[10px] text-muted-foreground">Upload multiple gallery images</span>
           </div>
-          <input ref={galleryInputRef} id="galleryImages" type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" multiple onChange={handleGalleryImageChange} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium" />
+          <input ref={galleryInputRef} id="galleryImages" type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" multiple onChange={handleGalleryImageChange} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-primary" />
           <div className="flex gap-3 flex-wrap pt-2">
             {formData.galleryImages.map((file, index) => (
               <div key={`${file.name}-${index}`} className="relative group h-24 w-24 rounded-lg border-2 border-muted overflow-hidden bg-background shadow-sm">

@@ -40,5 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
+BACKEND_CODE_EXAMPLES.md
+BANK_DETAILS_API.md
 .claude

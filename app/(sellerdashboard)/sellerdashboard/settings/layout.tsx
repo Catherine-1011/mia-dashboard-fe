@@ -63,7 +63,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
 	const sidebarNavItems = [
 		{ title: "Edit Profile",     href: s },
 		{ title: "Change Password",  href: `${s}/account` },
-		...(isSeller ? [{ title: "Bank Details", href: `${s}/bank-details` }] : []),
+		// ...(isSeller ? [{ title: "Bank Details", href: `${s}/bank-details` }] : []),
 	];
 
 	return (

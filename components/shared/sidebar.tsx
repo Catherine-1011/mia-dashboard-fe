@@ -44,7 +44,7 @@ const adminSidebarItems = [
 	{ title: "Products",    href: "/admindashboard/products",             icon: Package,  badge: null },
 	{ title: "Categories",  href: "/admindashboard/categories",          icon: Tag,      badge: null },
 	{ title: "Sellers",     href: "/admindashboard/sellers",                          icon: Store,     badge: null },
-	{ title: "Bank Requests", href: "/admindashboard/sellers/bank-change-requests",  icon: Banknote,  badge: null },
+	// { title: "Bank Requests", href: "/admindashboard/sellers/bank-change-requests",  icon: Banknote,  badge: null },
 	{ title: "Customers",   href: "/admindashboard/customers",                        icon: Users,     badge: null },
 	{ title: "Coupons",     href: "/admindashboard/coupon",       icon: Ticket,          badge: null },
 	{ title: "Refunds",     href: "/admindashboard/refund",       icon: RotateCcw,       badge: null },

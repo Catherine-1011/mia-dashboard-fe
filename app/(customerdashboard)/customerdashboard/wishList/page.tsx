@@ -358,7 +358,7 @@ const WishlistLoadingSkeleton = () => {
 // Utility function to add item to wishlist - can be used in other components
 export const addToWishlist = async (productId: string): Promise<boolean> => {
   try {
-    await api.post('/api/wishlist/add', { productId });
+    await api.post(`/api/wishlist/${productId}`);
     return true;
   } catch (err) {
     console.error('Error adding to wishlist:', err);

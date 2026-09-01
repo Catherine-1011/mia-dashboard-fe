@@ -77,16 +77,14 @@ export default function CustomerOrderDetailPage() {
     const fetchOrder = async () => {
       setLoading(true);
       try {
-        // Try direct detail endpoint first, fall back to list + filter
-        let found: Order | null = null;
-        try {
-          const res = await api.get(`/api/orders/${orderId}`);
-          found = res?.order ?? res ?? null;
-        } catch {
-          const res = await api.get("/api/orders/my-orders");
-          const orders: Order[] = Array.isArray(res) ? res : res.orders ?? [];
-          found = orders.find((o) => String(o.id) === String(orderId)) ?? null;
-        }
+        const res = await api.get("/api/orders/my-orders");
+        const orders: Order[] = Array.isArray(res) ? res : res.orders ?? [];
+        const normalizedOrderId = String(orderId).replace(/^#/, "");
+        const found = orders.find((o) => {
+          const id = String(o.id ?? "").replace(/^#/, "");
+          const displayId = String(o.displayId ?? "").replace(/^#/, "");
+          return id === normalizedOrderId || displayId === normalizedOrderId;
+        }) ?? null;
         if (found) {
           setOrder(found);
         } else {

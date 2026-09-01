@@ -479,7 +479,7 @@ const WishlistLoadingSkeleton = () => {
 // Utility function to add item to wishlist - can be used in other components
 export const addToWishlist = async (productId: string): Promise<boolean> => {
   try {
-    await api.post('/api/wishlist/add', { productId });
+    await api.post(`/api/wishlist/${productId}`);
     return true;
   } catch (err) {
     console.error('Error adding to wishlist:', err);
@@ -639,13 +639,10 @@ const Wishlist = () => {
       
       // Try dedicated move-to-cart endpoint first
       try {
-        const moveData: any = { 
-          itemId: itemId,
-          quantity: 1 
-        };
+        const moveData = { quantity: 1 };
         
         console.log('[DEBUG] Trying dedicated move-to-cart endpoint with:', moveData);
-        await api.post('/api/wishlist/move-to-cart', moveData);
+        await api.post(`/api/wishlist/move-to-cart/item/${itemId}`, moveData);
         
         console.log('[DEBUG] Successfully used dedicated move-to-cart endpoint');
         

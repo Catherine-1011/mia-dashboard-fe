@@ -1344,9 +1344,11 @@ function CampaignView({ campaign }: { campaign: Campaign }) {
       {/* Content preview */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Content Preview</p>
-        <div
-          className="text-sm border rounded-lg p-4 bg-muted/30 max-h-96 overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: campaign.content }}
+        <iframe
+          title={`Preview of ${campaign.subject}`}
+          sandbox=""
+          srcDoc={campaign.content}
+          className="w-full min-h-96 border rounded-lg bg-white"
         />
       </div>
     </div>

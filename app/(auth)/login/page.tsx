@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LogIn, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { getSafeInternalRedirect } from "@/lib/redirect-security";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -171,8 +172,13 @@ function LoginForm() {
 
     setTimeout(() => {
       // Use redirectTo parameter if provided, otherwise use role-based routing
-      if (redirectTo && redirectTo.startsWith("/")) {
-        router.push(redirectTo);
+      const safeRedirect = getSafeInternalRedirect(
+        redirectTo,
+        null,
+        window.location.origin,
+      );
+      if (safeRedirect) {
+        router.push(safeRedirect);
       } else if (
         role === "ADMIN" ||
         role === "admin" ||

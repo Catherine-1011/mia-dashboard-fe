@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { getSafeTrustedRedirect } from "@/lib/redirect-security";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
@@ -46,10 +47,11 @@ function LogoutCallbackContent() {
       // 4. Follow the ?redirect param if provided (sent by Webapp logout),
       //    otherwise just go to Dashboard login.
       const redirectTo = searchParams.get("redirect");
-      const safeRedirect =
-        redirectTo && redirectTo.startsWith("https://")
-          ? redirectTo
-          : "/login";
+      const safeRedirect = getSafeTrustedRedirect(
+        redirectTo,
+        "/login",
+        ["https://madeinarnhemland.com.au"],
+      );
       window.location.replace(safeRedirect);
     };
 

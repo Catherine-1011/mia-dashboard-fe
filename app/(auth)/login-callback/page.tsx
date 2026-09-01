@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getSafeInternalRedirect } from "@/lib/redirect-security";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://backend.madeinarnhemland.com.au";
@@ -49,7 +50,11 @@ function LoginCallbackContent() {
     const redirectTo = searchParams.get("redirectTo");
 
     // Only allow internal paths — block open redirects
-    const safePath = redirectTo && redirectTo.startsWith("/") ? redirectTo : null;
+    const safePath = getSafeInternalRedirect(
+      redirectTo,
+      null,
+      window.location.origin,
+    );
 
     // ── SAML SSO flow: backend sends token + type=saml directly ─────────────
     if (type === "saml" && token) {
